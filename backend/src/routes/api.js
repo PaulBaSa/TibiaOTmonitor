@@ -163,4 +163,44 @@ router.get('/logs/tail/:sessionId', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/debug/:sessionId
+ * Runs each metric command individually and returns raw stdout/stderr/exit code.
+ * Useful for diagnosing why a metric is showing wrong values.
+ * Remove or gate behind an env flag before exposing publicly.
+ */
+router.get('/debug/:sessionId', async (req, res) => {
+  const { sessionId } = req.params;
+
+  if (!sshService.isConnected(sessionId)) {
+    return res.status(401).json({ error: 'Session not found — please reconnect' });
+  }
+
+  const commands = {
+    serverProcess:   `(pgrep -f 'tfs|tibia|forgottenserver|otserv|canary') > /dev/null 2>&1 && echo running || echo stopped`,
+    pgrep_raw:       `pgrep -f 'tfs|tibia|forgottenserver|otserv|canary'`,
+    ps_all:          `ps -eo pid,comm,args | grep -Ei 'tfs|tibia|forgottenserver|otserv|canary' | grep -v grep`,
+    port7171:        `ss -tlnp 2>/dev/null | grep ':7171'`,
+    port7172:        `ss -tlnp 2>/dev/null | grep ':7172'`,
+    connections7171: `ss -tn 2>/dev/null | grep ':7171'`,
+    hostname:        `hostname`,
+    cpu:             `cat /proc/stat | head -1`,
+    memory:          `free -b | awk 'NR==2{printf "{\\"used\\":%d,\\"total\\":%d}", $3, $2}'`,
+    uptime:          `cat /proc/uptime`,
+    whoami:          `whoami`,
+  };
+
+  const results = {};
+  for (const [name, cmd] of Object.entries(commands)) {
+    try {
+      const { stdout, stderr, code } = await sshService.exec(sessionId, cmd);
+      results[name] = { stdout, stderr, code };
+    } catch (err) {
+      results[name] = { error: err.message };
+    }
+  }
+
+  res.json(results);
+});
+
 module.exports = router;
