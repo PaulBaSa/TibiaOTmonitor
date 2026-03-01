@@ -85,13 +85,10 @@ function safeJSON(str, fallback = null) {
 async function collectMetrics(sessionId, dbConfig = {}) {
   const run = (cmd) => sshService.exec(sessionId, cmd).then((r) => r.stdout).catch(() => null);
 
-  // Run independent commands in parallel
+  // Run in two batches of ≤9 to stay within OpenSSH's default MaxSessions=10
   const [
     hostname, osInfo, kernelVer, cpuModel, cpuCores,
     cpu, memRaw, diskRaw, loadRaw,
-    uptimeSec, serverProcess,
-    port7171, port7172, connections7171,
-    netRaw, cpuTemp, listLogs, processMeta,
   ] = await Promise.all([
     run(CMDS.hostname),
     run(CMDS.osInfo),
@@ -102,6 +99,13 @@ async function collectMetrics(sessionId, dbConfig = {}) {
     run(CMDS.memory),
     run(CMDS.disk),
     run(CMDS.loadAvg),
+  ]);
+
+  const [
+    uptimeSec, serverProcess,
+    port7171, port7172, connections7171,
+    netRaw, cpuTemp, listLogs, processMeta,
+  ] = await Promise.all([
     run(CMDS.uptimeSeconds),
     run(CMDS.serverProcess),
     run(CMDS.port7171),
