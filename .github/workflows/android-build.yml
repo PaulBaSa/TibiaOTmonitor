@@ -89,18 +89,9 @@ jobs:
             ./gradlew assembleRelease --no-daemon
           fi
 
-      - name: Upload signed release APK
-        if: steps.signing.outputs.available == 'true'
+      - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:
           name: tibia-ot-monitor-release-${{ github.run_number }}
-          path: mobile/android/app/build/outputs/apk/release/app-release.apk
-          retention-days: 14
-
-      - name: Upload unsigned release APK
-        if: steps.signing.outputs.available != 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: tibia-ot-monitor-release-unsigned-${{ github.run_number }}
-          path: mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          path: mobile/android/app/build/outputs/apk/release/*.apk
           retention-days: 14
