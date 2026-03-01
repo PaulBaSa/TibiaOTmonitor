@@ -30,8 +30,8 @@ awk 'NR==FNR{u1=$1;t1=$2;next} {du=$1-u1; dt=$2-t1; printf "%.1f", (dt>0)?(du/dt
   // Uptime in seconds
   uptimeSeconds: `cat /proc/uptime | awk '{printf "%.0f", $1}'`,
 
-  // Tibia server process — substring match so renamed/wrapped binaries are also caught
-  serverProcess: `(pgrep -f 'tfs|tibia|forgottenserver|otserv|canary') > /dev/null 2>&1 && echo running || echo stopped`,
+  // Tibia server process — use grep on ps output to avoid shell quoting issues with pgrep regex
+  serverProcess: `ps -eo comm,args | grep -qE '(^|/)(tfs|tibia|forgottenserver|otserv|canary)( |$)' && echo running || echo stopped`,
 
   // Game port 7171
   port7171: `ss -tlnp 2>/dev/null | grep -q ':7171' && echo open || echo closed`,
