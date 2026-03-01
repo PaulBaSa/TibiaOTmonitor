@@ -177,7 +177,7 @@ router.get('/debug/:sessionId', async (req, res) => {
   }
 
   const commands = {
-    serverProcess:   `(pgrep -f 'tfs|tibia|forgottenserver|otserv|canary') > /dev/null 2>&1 && echo running || echo stopped`,
+    serverProcess:   `ps -eo comm,args | grep -qE '(^|/)(tfs|tibia|forgottenserver|otserv|canary)( |$)' && echo running || echo stopped`,
     pgrep_raw:       `pgrep -f 'tfs|tibia|forgottenserver|otserv|canary'`,
     ps_all:          `ps -eo pid,comm,args | grep -Ei 'tfs|tibia|forgottenserver|otserv|canary' | grep -v grep`,
     port7171:        `ss -tlnp 2>/dev/null | grep ':7171'`,
