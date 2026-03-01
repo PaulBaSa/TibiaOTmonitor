@@ -51,7 +51,19 @@ jobs:
         working-directory: mobile
         run: npx expo prebuild --platform android --no-install
 
+      - name: Check signing secrets
+        id: signing
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Decode keystore
+        if: steps.signing.outputs.available == 'true'
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > mobile/android/app/release.keystore
 
       - name: Make gradlew executable
@@ -61,19 +73,34 @@ jobs:
       - name: Build release APK
         working-directory: mobile/android
         env:
+          SIGNING_AVAILABLE: ${{ steps.signing.outputs.available }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          ./gradlew assembleRelease --no-daemon \
-            -Pandroid.injected.signing.store.file=$(pwd)/app/release.keystore \
-            -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
-            -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
-            -Pandroid.injected.signing.key.password=$KEY_PASSWORD
+          if [ "$SIGNING_AVAILABLE" = "true" ]; then
+            ./gradlew assembleRelease --no-daemon \
+              -Pandroid.injected.signing.store.file=$(pwd)/app/release.keystore \
+              -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
+              -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
+              -Pandroid.injected.signing.key.password=$KEY_PASSWORD
+          else
+            echo "::warning::Signing secrets not set — producing unsigned APK"
+            ./gradlew assembleRelease --no-daemon
+          fi
 
-      - name: Upload release APK
+      - name: Upload signed release APK
+        if: steps.signing.outputs.available == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: tibia-ot-monitor-release-${{ github.run_number }}
           path: mobile/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 14
+
+      - name: Upload unsigned release APK
+        if: steps.signing.outputs.available != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tibia-ot-monitor-release-unsigned-${{ github.run_number }}
+          path: mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk
           retention-days: 14
