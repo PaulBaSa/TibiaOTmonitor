@@ -12,11 +12,14 @@ const CMDS = {
   cpuModel:    'grep "model name" /proc/cpuinfo | head -1 | cut -d\':\' -f2 | xargs',
   cpuCores:    'nproc',
 
-  // CPU — two snapshots 500ms apart for accuracy
-  cpu: `awk '{u=$2+$4; t=$2+$3+$4+$5+$6+$7+$8; print u, t}' /proc/stat > /tmp/_cpu1; \
+  // CPU — two snapshots 500ms apart; used = total−idle (all non-idle fields)
+  // $$ makes temp filenames unique per shell invocation to avoid race conditions
+  cpu: `f1=/tmp/_cpu1_$$; f2=/tmp/_cpu2_$$; \
+awk 'NR==1{t=$2+$3+$4+$5+$6+$7+$8; print t-$5, t}' /proc/stat > $f1; \
 sleep 0.5; \
-awk '{u=$2+$4; t=$2+$3+$4+$5+$6+$7+$8; print u, t}' /proc/stat > /tmp/_cpu2; \
-awk 'NR==FNR{u1=$1;t1=$2;next} {du=$1-u1; dt=$2-t1; printf "%.1f", (dt>0)?(du/dt*100):0}' /tmp/_cpu1 /tmp/_cpu2`,
+awk 'NR==1{t=$2+$3+$4+$5+$6+$7+$8; print t-$5, t}' /proc/stat > $f2; \
+awk 'NR==FNR{u1=$1;t1=$2;next} {du=$1-u1; dt=$2-t1; printf "%.1f", (dt>0)?(du/dt*100):0}' $f1 $f2; \
+rm -f $f1 $f2`,
 
   // Memory (bytes)
   memory: `free -b | awk 'NR==2{printf "{\\"used\\":%d,\\"total\\":%d,\\"free\\":%d,\\"cached\\":%d}", $3, $2, $4, $6}'`,

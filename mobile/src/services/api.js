@@ -59,9 +59,31 @@ export async function fetchMetrics(sessionId, dbConfig = {}) {
   return res.data;
 }
 
-export async function fetchPing(sessionId) {
-  const res = await client().get(`/api/ping/${sessionId}`);
-  return res.data;
+/**
+ * Measure round-trip latency from the mobile device to the backend
+ * by timing a /health request. Runs 3 probes and returns avg/min/max.
+ */
+export async function fetchPing() {
+  const PROBES = 3;
+  const times = [];
+  const c = client();
+  for (let i = 0; i < PROBES; i++) {
+    const t0 = Date.now();
+    try {
+      await c.get('/health', { timeout: 5000 });
+      times.push(Date.now() - t0);
+    } catch (_) {
+      // probe failed — skip
+    }
+  }
+  if (times.length === 0) return { alive: false, latencyMs: null, min: null, max: null };
+  const avg = times.reduce((a, b) => a + b, 0) / times.length;
+  return {
+    alive: true,
+    latencyMs: parseFloat(avg.toFixed(1)),
+    min: Math.min(...times),
+    max: Math.max(...times),
+  };
 }
 
 export async function fetchLogFiles(sessionId) {

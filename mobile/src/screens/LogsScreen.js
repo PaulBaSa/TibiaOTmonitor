@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, Platform,
+  ActivityIndicator, Modal, FlatList, SafeAreaView,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { colors, typography, spacing, radius } from '../theme';
 import { useApp } from '../context/AppContext';
 import { fetchLogFiles } from '../services/api';
@@ -15,13 +14,14 @@ const MAX_LINES = 1000;
 export default function LogsScreen() {
   const { sessionId } = useApp();
 
-  const [logFiles,     setLogFiles]     = useState([]);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [lines,        setLines]        = useState([]);
-  const [streaming,    setStreaming]     = useState(false);
-  const [autoScroll,   setAutoScroll]   = useState(true);
-  const [loadingFiles, setLoadingFiles] = useState(true);
-  const [error,        setError]        = useState(null);
+  const [logFiles,       setLogFiles]       = useState([]);
+  const [selectedFile,   setSelectedFile]   = useState(null);
+  const [lines,          setLines]          = useState([]);
+  const [streaming,      setStreaming]       = useState(false);
+  const [autoScroll,     setAutoScroll]     = useState(true);
+  const [loadingFiles,   setLoadingFiles]   = useState(true);
+  const [error,          setError]          = useState(null);
+  const [dropdownOpen,   setDropdownOpen]   = useState(false);
 
   const socketRef = useRef(null);
 
@@ -130,19 +130,51 @@ export default function LogsScreen() {
         {logFiles.length > 0 ? (
           <View style={styles.pickerWrap}>
             <Text style={styles.pickerLabel}>Log File</Text>
-            <View style={styles.pickerBox}>
-              <Picker
-                selectedValue={selectedFile}
-                onValueChange={(v) => setSelectedFile(v)}
-                style={styles.picker}
-                dropdownIconColor={colors.textSecondary}
-                itemStyle={{ color: colors.text, backgroundColor: colors.surface }}
+            <TouchableOpacity
+              style={styles.dropdownTrigger}
+              onPress={() => setDropdownOpen(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.dropdownValue} numberOfLines={1}>{selectedFile || '—'}</Text>
+              <Text style={styles.dropdownChevron}>▾</Text>
+            </TouchableOpacity>
+
+            <Modal
+              visible={dropdownOpen}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setDropdownOpen(false)}
+            >
+              <TouchableOpacity
+                style={styles.modalOverlay}
+                activeOpacity={1}
+                onPress={() => setDropdownOpen(false)}
               >
-                {logFiles.map((f) => (
-                  <Picker.Item key={f} label={f} value={f} color={colors.text} />
-                ))}
-              </Picker>
-            </View>
+                <View style={styles.modalSheet}>
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>Select Log File</Text>
+                    <TouchableOpacity onPress={() => setDropdownOpen(false)}>
+                      <Text style={styles.modalClose}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <FlatList
+                    data={logFiles}
+                    keyExtractor={(f) => f}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={[styles.modalItem, item === selectedFile && styles.modalItemActive]}
+                        onPress={() => { setSelectedFile(item); setDropdownOpen(false); }}
+                      >
+                        <Text style={[styles.modalItemText, item === selectedFile && styles.modalItemTextActive]}>
+                          {item}
+                        </Text>
+                        {item === selectedFile && <Text style={styles.modalItemCheck}>✓</Text>}
+                      </TouchableOpacity>
+                    )}
+                  />
+                </View>
+              </TouchableOpacity>
+            </Modal>
           </View>
         ) : (
           <Text style={styles.noFilesText}>No log files found in /home/tibiaOG/logs/</Text>
@@ -215,14 +247,55 @@ const styles = StyleSheet.create({
 
   pickerLabel: { fontSize: typography.size.xs, color: colors.textSecondary, marginBottom: 4 },
   pickerWrap: {},
-  pickerBox: {
+
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.surfaceElevated,
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
-    overflow: 'hidden',
+    paddingHorizontal: spacing.md,
+    height: 44,
   },
-  picker: { color: colors.text, height: 44 },
+  dropdownValue: { flex: 1, color: colors.text, fontSize: typography.size.sm },
+  dropdownChevron: { color: colors.textSecondary, fontSize: 16, marginLeft: spacing.sm },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    maxHeight: '70%',
+    borderTopWidth: 1,
+    borderColor: colors.border,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: { color: colors.text, fontSize: typography.size.md, fontWeight: typography.weight.bold },
+  modalClose: { color: colors.textSecondary, fontSize: 18, padding: spacing.xs },
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalItemActive: { backgroundColor: colors.surfaceElevated },
+  modalItemText: { flex: 1, color: colors.textSecondary, fontSize: typography.size.sm },
+  modalItemTextActive: { color: colors.primary, fontWeight: typography.weight.medium },
+  modalItemCheck: { color: colors.primary, fontSize: 16, marginLeft: spacing.sm },
 
   noFilesText: { color: colors.textMuted, fontSize: typography.size.sm, textAlign: 'center', padding: spacing.sm },
 

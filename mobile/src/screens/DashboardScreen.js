@@ -42,7 +42,7 @@ export default function DashboardScreen() {
     try {
       const [m, p] = await Promise.all([
         fetchMetrics(sessionId, dbConfig),
-        fetchPing(sessionId),
+        fetchPing(),
       ]);
       setMetrics(m);
       setPing(p);

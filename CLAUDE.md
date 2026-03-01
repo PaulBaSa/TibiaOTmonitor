@@ -132,13 +132,40 @@ npm install
 
 # Start Expo development server
 npm start          # Universal (scan QR with Expo Go)
-npm run android    # Android emulator/device
+npm run android    # Android device/emulator (expo run:android)
 npm run ios        # iOS simulator/device (macOS only)
 npm run web        # Web browser
 
 # Production builds (requires EAS CLI + Expo account)
 npx eas build --platform android --profile preview
 npx eas build --platform ios --profile preview
+```
+
+### Android Build Script
+
+A reusable script `build-android.sh` at the repo root handles the full build + install pipeline:
+
+```bash
+./build-android.sh           # debug (default) — bundles JS inline, no Metro needed
+./build-android.sh debug     # same as above
+./build-android.sh release   # release APK
+```
+
+The script runs: `npm install` → `expo prebuild --platform android --clean` → `./gradlew assemble[Debug|Release] -PbundleInDebug=true` → `adb install -r` → `adb shell am start`.
+
+Requires a connected Android device with ADB authorized (`adb devices`).
+
+### Deploying Backend Changes to Production
+
+The backend runs on the remote server at `/root/TibiaOTmonitor/backend`. After editing files locally, sync and restart:
+
+```bash
+# Sync (excludes node_modules)
+sshpass -p 'PASSWORD' rsync -avz --exclude node_modules \
+  backend/ root@SERVER_IP:/root/TibiaOTmonitor/backend/ \
+  -e "ssh -o StrictHostKeyChecking=no"
+
+# Then restart the backend manually on the server
 ```
 
 ### Testing
@@ -283,6 +310,12 @@ Spacing uses a 4px grid: `spacing.xs=4`, `sm=8`, `md=16`, `lg=24`, `xl=32`.
 5. **CPU temperature:** Only available on Linux systems with `/sys/class/thermal/thermal_zone0/temp`. On servers without this file the field is omitted from the response.
 
 6. **Android network:** On Android, the mobile app cannot reach `localhost` for the backend — use the machine's LAN IP address.
+
+7. **OpenSSH MaxSessions limit:** `collectMetrics` runs SSH commands in two sequential `Promise.all` batches of ≤9 each. Do not merge them back into a single `Promise.all` — OpenSSH's default `MaxSessions=10` causes commands beyond the 10th channel to fail silently, returning `null` for those metrics (showing "stopped"/empty in the app).
+
+8. **Mobile entry point:** The app requires `mobile/index.js` (calls `registerRootComponent`) as the entry point — `package.json` `"main"` must point to `index.js`, not `App.js`. Without this, Android throws `"main" has not been registered`.
+
+9. **Bundled debug APK:** Debug builds use `-PbundleInDebug=true` in Gradle so the JS bundle is embedded in the APK. Without this flag, the debug APK tries to connect to a Metro dev server at the build machine's IP and crashes with `java.net.ConnectException`.
 
 ---
 
