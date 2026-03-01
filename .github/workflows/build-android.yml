@@ -18,7 +18,7 @@ on:
 
 jobs:
   build-android:
-    name: Build Android APK (${{ inputs.build_type || 'debug' }})
+    name: Build Android APK (release)
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
@@ -105,25 +105,23 @@ jobs:
         working-directory: mobile/android
         run: chmod +x gradlew
 
-      - name: Build debug APK
-        if: ${{ inputs.build_type != 'release' }}
-        working-directory: mobile/android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+      # TODO: re-enable debug build when needed
+      # - name: Build debug APK
+      #   working-directory: mobile/android
+      #   run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Build release APK (unsigned)
-        if: ${{ inputs.build_type == 'release' }}
         working-directory: mobile/android
         run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       # ── 7. Print APK info ─────────────────────────────────────────────────────
       - name: APK summary
         run: |
-          BUILD_TYPE="${{ inputs.build_type || 'debug' }}"
-          APK_PATH="mobile/android/app/build/outputs/apk/${BUILD_TYPE}/app-${BUILD_TYPE}.apk"
+          APK_PATH="mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk"
           if [ -f "$APK_PATH" ]; then
             SIZE=$(du -sh "$APK_PATH" | cut -f1)
             echo "✅ Build successful!"
-            echo "   Type : ${BUILD_TYPE}"
+            echo "   Type : release (unsigned)"
             echo "   Size : ${SIZE}"
             echo "   Path : ${APK_PATH}"
           else
@@ -133,16 +131,15 @@ jobs:
           fi
 
       # ── 8. Upload artifact ────────────────────────────────────────────────────
-      - name: Upload debug APK
-        if: ${{ inputs.build_type != 'release' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: tibia-monitor-debug-${{ github.run_number }}
-          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 14
+      # TODO: re-enable when debug build is needed
+      # - name: Upload debug APK
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: tibia-monitor-debug-${{ github.run_number }}
+      #     path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+      #     retention-days: 14
 
       - name: Upload release APK
-        if: ${{ inputs.build_type == 'release' }}
         uses: actions/upload-artifact@v4
         with:
           name: tibia-monitor-release-unsigned-${{ github.run_number }}
