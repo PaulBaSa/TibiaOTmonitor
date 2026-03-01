@@ -117,7 +117,7 @@ jobs:
       # ── 7. Print APK info ─────────────────────────────────────────────────────
       - name: APK summary
         run: |
-          APK_PATH="mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          APK_PATH="mobile/android/app/build/outputs/apk/release/app-release.apk"
           if [ -f "$APK_PATH" ]; then
             SIZE=$(du -sh "$APK_PATH" | cut -f1)
             echo "✅ Build successful!"
@@ -143,5 +143,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tibia-monitor-release-unsigned-${{ github.run_number }}
-          path: mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 14
