@@ -30,8 +30,8 @@ awk 'NR==FNR{u1=$1;t1=$2;next} {du=$1-u1; dt=$2-t1; printf "%.1f", (dt>0)?(du/dt
   // Uptime in seconds
   uptimeSeconds: `cat /proc/uptime | awk '{printf "%.0f", $1}'`,
 
-  // Tibia server process — checks common binary names for TFS / OT servers
-  serverProcess: `(pgrep -x tfs || pgrep -x tibia || pgrep -x forgottenserver || pgrep -x otserv || pgrep -x canary) > /dev/null 2>&1 && echo running || echo stopped`,
+  // Tibia server process — substring match so renamed/wrapped binaries are also caught
+  serverProcess: `(pgrep -f 'tfs|tibia|forgottenserver|otserv|canary') > /dev/null 2>&1 && echo running || echo stopped`,
 
   // Game port 7171
   port7171: `ss -tlnp 2>/dev/null | grep -q ':7171' && echo open || echo closed`,
@@ -52,7 +52,7 @@ awk 'NR==FNR{u1=$1;t1=$2;next} {du=$1-u1; dt=$2-t1; printf "%.1f", (dt>0)?(du/dt
   listLogs: `ls /home/tibiaOG/logs/ 2>/dev/null`,
 
   // Process name and uptime for Tibia server
-  processMeta: `ps -eo pid,comm,etimes,pcpu,pmem --sort=-pcpu 2>/dev/null | awk 'NR>1 && ($2=="tfs" || $2=="tibia" || $2=="forgottenserver" || $2=="canary") {printf "{\\"pid\\":%s,\\"name\\":\\"%s\\",\\"uptime\\":%s,\\"cpu\\":%.1f,\\"mem\\":%.1f}", $1,$2,$3,$4,$5; exit}'`,
+  processMeta: `ps -eo pid,comm,etimes,pcpu,pmem --sort=-pcpu 2>/dev/null | awk 'NR>1 && ($2=="tfs" || $2=="tibia" || $2=="forgottenserver" || $2=="otserv" || $2=="canary") {printf "{\\"pid\\":%s,\\"name\\":\\"%s\\",\\"uptime\\":%s,\\"cpu\\":%.1f,\\"mem\\":%.1f}", $1,$2,$3,$4,$5; exit}'`,
 };
 
 function playerCountCmd(dbName, dbUser, dbPass) {
