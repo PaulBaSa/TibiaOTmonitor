@@ -6,14 +6,13 @@
  * so they survive the `--clean` flag used in build-android.sh.
  *
  * What this plugin does:
- *  1. Copies Java sources  → android/app/src/main/java/com/tibiaotmonitor/widget/
- *  2. Copies XML resources → android/app/src/main/res/{layout,xml,drawable}/
+ *  1. Copies TibiaWidgetProvider.java → android/app/src/main/java/…/widget/
+ *  2. Copies XML resources            → android/app/src/main/res/{layout,xml,drawable}/
  *  3. Registers the AppWidgetProvider receiver in AndroidManifest.xml
- *  4. Registers TibiaPrefsPackage in MainApplication.kt (or .java)
  *
- * NOTE: Step 4 uses withDangerousMod (runs last, after all other mods) so
- * that MainApplication.kt already exists when we patch it.  Plain string
- * replacement is used instead of regex to avoid silent mismatches.
+ * NO native module / NO MainApplication.kt patching required.
+ * The widget reads backendUrl + sessionId directly from AsyncStorage's SQLite
+ * database — AppContext.js writes the values there on every connect/disconnect.
  */
 
 const { withAndroidManifest, withDangerousMod } = require('@expo/config-plugins');
@@ -30,8 +29,7 @@ function copyFile(src, dest) {
 }
 
 // ---------------------------------------------------------------------------
-// Step 1 – copy Java sources + XML resources into the generated android/ dir
-// (runs as a dangerous mod so it is ordered with Step 3 below)
+// Step 1 – copy Java source + XML resources into the generated android/ dir
 // ---------------------------------------------------------------------------
 
 function withWidgetFiles(config) {
@@ -41,21 +39,15 @@ function withWidgetFiles(config) {
       const androidRoot = cfg.modRequest.platformProjectRoot;
       const pluginsDir  = path.join(cfg.modRequest.projectRoot, 'plugins');
 
-      // Java sources
+      // Widget provider Java source
       const javaDest = path.join(
         androidRoot,
         'app/src/main/java/com/tibiaotmonitor/widget',
       );
-      for (const file of [
-        'TibiaWidgetProvider.java',
-        'TibiaPrefsModule.java',
-        'TibiaPrefsPackage.java',
-      ]) {
-        copyFile(
-          path.join(pluginsDir, 'java', file),
-          path.join(javaDest, file),
-        );
-      }
+      copyFile(
+        path.join(pluginsDir, 'java', 'TibiaWidgetProvider.java'),
+        path.join(javaDest,           'TibiaWidgetProvider.java'),
+      );
 
       // XML resources
       copyFile(
@@ -120,98 +112,12 @@ function withWidgetManifest(config) {
 }
 
 // ---------------------------------------------------------------------------
-// Step 3 – register TibiaPrefsPackage in MainApplication.kt / .java
-//
-// withDangerousMod runs AFTER all other mods, so MainApplication.kt is
-// already written by the time this callback executes.
-// Plain string matching is used (no regex) so whitespace/indentation
-// differences can never cause a silent skip.
-// ---------------------------------------------------------------------------
-
-function withWidgetMainApplication(config) {
-  return withDangerousMod(config, [
-    'android',
-    async (cfg) => {
-      const androidRoot = cfg.modRequest.platformProjectRoot;
-      const pkgDir = path.join(
-        androidRoot,
-        'app/src/main/java/com/tibiaotmonitor',
-      );
-
-      // Expo 51 generates Kotlin; older setups may use Java
-      const ktPath   = path.join(pkgDir, 'MainApplication.kt');
-      const javaPath = path.join(pkgDir, 'MainApplication.java');
-      const filePath = fs.existsSync(ktPath)
-        ? ktPath
-        : fs.existsSync(javaPath) ? javaPath : null;
-
-      if (!filePath) {
-        console.warn(
-          '[withAndroidWidget] MainApplication not found — TibiaPrefsPackage not registered',
-        );
-        return cfg;
-      }
-
-      const isKotlin = filePath.endsWith('.kt');
-      let src = fs.readFileSync(filePath, 'utf8');
-
-      // ── 1. Add import ────────────────────────────────────────────────────
-      const importLine = 'import com.tibiaotmonitor.widget.TibiaPrefsPackage';
-      if (!src.includes(importLine)) {
-        // Anchor: PackageList import is always present in Expo-generated files
-        const anchor = 'import com.facebook.react.PackageList';
-        if (src.includes(anchor)) {
-          src = src.replace(anchor, `${importLine}\n${anchor}`);
-        } else {
-          // Fallback: insert right after the package declaration
-          src = src.replace(
-            'package com.tibiaotmonitor',
-            `package com.tibiaotmonitor\n\n${importLine}`,
-          );
-        }
-      }
-
-      // ── 2. Register the package ──────────────────────────────────────────
-      if (!src.includes('TibiaPrefsPackage()')) {
-        if (isKotlin) {
-          // Expo 51 template: "PackageList(this).packages.apply {"
-          const anchor = 'PackageList(this).packages.apply {';
-          if (src.includes(anchor)) {
-            src = src.replace(
-              anchor,
-              `${anchor}\n          add(TibiaPrefsPackage())`,
-            );
-          } else {
-            console.warn(
-              '[withAndroidWidget] Could not find PackageList anchor in MainApplication.kt',
-            );
-          }
-        } else {
-          // Java template
-          const anchor = 'new PackageList(this).getPackages()';
-          if (src.includes(anchor)) {
-            src = src.replace(
-              anchor,
-              `new PackageList(this).getPackages(); packages.add(new TibiaPrefsPackage())`,
-            );
-          }
-        }
-      }
-
-      fs.writeFileSync(filePath, src);
-      return cfg;
-    },
-  ]);
-}
-
-// ---------------------------------------------------------------------------
-// Compose all steps
+// Compose
 // ---------------------------------------------------------------------------
 
 const withAndroidWidget = (config) => {
   config = withWidgetFiles(config);
   config = withWidgetManifest(config);
-  config = withWidgetMainApplication(config);
   return config;
 };
 

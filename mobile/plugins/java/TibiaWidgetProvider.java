@@ -5,7 +5,8 @@ import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Handler;
 import android.os.Looper;
 import android.widget.RemoteViews;
@@ -15,6 +16,7 @@ import com.tibiaotmonitor.R;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -22,15 +24,30 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
+/**
+ * Home-screen widget that shows live TibiaOT server metrics.
+ *
+ * Configuration is read directly from @react-native-async-storage's SQLite
+ * database ("AsyncStorage").  This requires no native module registration in
+ * MainApplication — it works out of the box on every build.
+ *
+ * Keys read (must match STORAGE_KEYS in AppContext.js):
+ *   tibia_backend_url  — the backend base URL (e.g. "http://192.168.1.10:3000")
+ *   tibia_session_id   — the active SSH session ID
+ */
 public class TibiaWidgetProvider extends AppWidgetProvider {
 
-    static final String PREFS_NAME = "TibiaOTMonitor";
+    static final String PREFS_NAME     = "TibiaOTMonitor";  // unused, kept for compat
     static final String ACTION_REFRESH = "com.tibiaotmonitor.WIDGET_REFRESH";
+
+    // Must match AppContext.js → STORAGE_KEYS
+    private static final String AS_BACKEND_URL = "tibia_backend_url";
+    private static final String AS_SESSION_ID  = "tibia_session_id";
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
-        for (int appWidgetId : appWidgetIds) {
-            updateWidget(context, appWidgetManager, appWidgetId);
+        for (int id : appWidgetIds) {
+            updateWidget(context, appWidgetManager, id);
         }
     }
 
@@ -38,65 +55,77 @@ public class TibiaWidgetProvider extends AppWidgetProvider {
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
         if (ACTION_REFRESH.equals(intent.getAction())) {
-            int appWidgetId = intent.getIntExtra(
+            int id = intent.getIntExtra(
                     AppWidgetManager.EXTRA_APPWIDGET_ID,
                     AppWidgetManager.INVALID_APPWIDGET_ID);
-            if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
-                updateWidget(context, appWidgetManager, appWidgetId);
+            if (id != AppWidgetManager.INVALID_APPWIDGET_ID) {
+                updateWidget(context, AppWidgetManager.getInstance(context), id);
             }
         }
     }
 
-    static void updateWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
-        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String backendUrl = prefs.getString("backendUrl", null);
-        String sessionId  = prefs.getString("sessionId",  null);
+    // -------------------------------------------------------------------------
 
-        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.tibia_widget_layout);
-
-        // Tap widget body → open app
-        Intent launchIntent = context.getPackageManager()
-                .getLaunchIntentForPackage(context.getPackageName());
-        if (launchIntent != null) {
-            PendingIntent openApp = PendingIntent.getActivity(context, 0, launchIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            views.setOnClickPendingIntent(R.id.widget_container, openApp);
-        }
-
-        // Tap ↻ button → manual refresh broadcast
-        Intent refreshIntent = new Intent(context, TibiaWidgetProvider.class);
-        refreshIntent.setAction(ACTION_REFRESH);
-        refreshIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-        PendingIntent refreshPi = PendingIntent.getBroadcast(context, appWidgetId, refreshIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        views.setOnClickPendingIntent(R.id.refresh_btn, refreshPi);
-
-        if (backendUrl == null || sessionId == null) {
-            views.setTextViewText(R.id.status_text, "Not configured");
-            views.setTextColor(R.id.status_dot, 0xFF666666);
-            views.setTextViewText(R.id.players_text, "\u2014");
-            views.setTextViewText(R.id.cpu_text,     "\u2014");
-            views.setTextViewText(R.id.ram_text,     "\u2014");
-            views.setTextViewText(R.id.disk_text,    "\u2014");
-            views.setTextViewText(R.id.last_updated, "Open app to connect");
-            appWidgetManager.updateAppWidget(appWidgetId, views);
-            return;
-        }
-
-        // Show a transient "refreshing" state while the network call runs
-        views.setTextViewText(R.id.last_updated, "Refreshing\u2026");
-        appWidgetManager.updateAppWidget(appWidgetId, views);
+    static void updateWidget(Context context, AppWidgetManager manager, int appWidgetId) {
+        // Show "Refreshing…" immediately so the user always sees button feedback
+        RemoteViews loadingViews = buildBaseViews(context, appWidgetId);
+        loadingViews.setTextViewText(R.id.last_updated, "Refreshing\u2026");
+        manager.updateAppWidget(appWidgetId, loadingViews);
 
         Handler mainHandler = new Handler(Looper.getMainLooper());
         new Thread(() -> {
-            MetricsResult result = fetchMetrics(backendUrl, sessionId);
-            mainHandler.post(() -> applyResult(context, appWidgetManager, appWidgetId, result));
+            // 1. Read config from AsyncStorage SQLite (no native module needed)
+            String[] cfg       = readAsyncStorage(context);
+            String backendUrl  = cfg[0];
+            String sessionId   = cfg[1];
+
+            // 2. Fetch metrics (or report not-configured)
+            MetricsResult result;
+            if (backendUrl == null || sessionId == null) {
+                result = new MetricsResult();
+                result.notConfigured = true;
+            } else {
+                result = fetchMetrics(backendUrl, sessionId);
+            }
+
+            mainHandler.post(() -> applyResult(context, manager, appWidgetId, result));
         }).start();
     }
 
     // -------------------------------------------------------------------------
-    // Network (runs on background thread)
+    // Read backendUrl + sessionId from AsyncStorage SQLite
+    // -------------------------------------------------------------------------
+
+    private static String[] readAsyncStorage(Context context) {
+        File dbFile = context.getDatabasePath("AsyncStorage");
+        if (!dbFile.exists()) return new String[]{null, null};
+
+        String backendUrl = null;
+        String sessionId  = null;
+        SQLiteDatabase db = null;
+        try {
+            db = SQLiteDatabase.openDatabase(
+                    dbFile.getAbsolutePath(), null, SQLiteDatabase.OPEN_READONLY);
+            Cursor cursor = db.rawQuery(
+                    "SELECT key, value FROM catalystLocalStorage WHERE key IN (?,?)",
+                    new String[]{AS_BACKEND_URL, AS_SESSION_ID});
+            while (cursor.moveToNext()) {
+                String key = cursor.getString(0);
+                String val = cursor.getString(1);
+                if (AS_BACKEND_URL.equals(key)) backendUrl = val;
+                else if (AS_SESSION_ID.equals(key))  sessionId  = val;
+            }
+            cursor.close();
+        } catch (Exception ignored) {
+            // DB may be locked or not yet created; return nulls → "Not configured"
+        } finally {
+            if (db != null) try { db.close(); } catch (Exception ignored2) {}
+        }
+        return new String[]{backendUrl, sessionId};
+    }
+
+    // -------------------------------------------------------------------------
+    // Network call (background thread)
     // -------------------------------------------------------------------------
 
     private static MetricsResult fetchMetrics(String backendUrl, String sessionId) {
@@ -129,14 +158,14 @@ public class TibiaWidgetProvider extends AppWidgetProvider {
     }
 
     // -------------------------------------------------------------------------
-    // UI update (runs on main thread)
+    // UI helpers
     // -------------------------------------------------------------------------
 
-    private static void applyResult(Context context, AppWidgetManager manager,
-                                    int appWidgetId, MetricsResult result) {
+    /** Build a RemoteViews with click intents already attached. */
+    private static RemoteViews buildBaseViews(Context context, int appWidgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.tibia_widget_layout);
 
-        // Re-attach click intents (RemoteViews are recreated from scratch)
+        // Tap widget body → launch app
         Intent launchIntent = context.getPackageManager()
                 .getLaunchIntentForPackage(context.getPackageName());
         if (launchIntent != null) {
@@ -144,6 +173,8 @@ public class TibiaWidgetProvider extends AppWidgetProvider {
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             views.setOnClickPendingIntent(R.id.widget_container, openApp);
         }
+
+        // Tap ↻ → refresh broadcast
         Intent refreshIntent = new Intent(context, TibiaWidgetProvider.class);
         refreshIntent.setAction(ACTION_REFRESH);
         refreshIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
@@ -151,9 +182,24 @@ public class TibiaWidgetProvider extends AppWidgetProvider {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.refresh_btn, refreshPi);
 
-        String timeStr = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date());
+        return views;
+    }
 
-        if (result.sessionExpired) {
+    private static void applyResult(Context context, AppWidgetManager manager,
+                                    int appWidgetId, MetricsResult result) {
+        RemoteViews views = buildBaseViews(context, appWidgetId);
+        String time = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date());
+
+        if (result.notConfigured) {
+            views.setTextViewText(R.id.status_text, "Not configured");
+            views.setTextColor(R.id.status_dot, 0xFF666666);
+            views.setTextViewText(R.id.players_text, "\u2014");
+            views.setTextViewText(R.id.cpu_text,     "\u2014");
+            views.setTextViewText(R.id.ram_text,     "\u2014");
+            views.setTextViewText(R.id.disk_text,    "\u2014");
+            views.setTextViewText(R.id.last_updated, "Open app to connect");
+
+        } else if (result.sessionExpired) {
             views.setTextViewText(R.id.status_text, "Session expired");
             views.setTextColor(R.id.status_dot, 0xFFF44336);
             views.setTextViewText(R.id.players_text, "\u2014");
@@ -169,7 +215,7 @@ public class TibiaWidgetProvider extends AppWidgetProvider {
             views.setTextViewText(R.id.cpu_text,     "\u2014");
             views.setTextViewText(R.id.ram_text,     "\u2014");
             views.setTextViewText(R.id.disk_text,    "\u2014");
-            views.setTextViewText(R.id.last_updated, "Updated " + timeStr);
+            views.setTextViewText(R.id.last_updated, "Updated " + time);
 
         } else {
             try {
@@ -179,27 +225,27 @@ public class TibiaWidgetProvider extends AppWidgetProvider {
                 JSONObject memory = data.optJSONObject("memory");
                 JSONObject disk   = data.optJSONObject("disk");
 
-                String serverStatus = tibia  != null ? tibia.optString("serverStatus", "unknown") : "unknown";
-                int    playerCount  = tibia  != null ? tibia.optInt("playerCount", 0)    : 0;
-                double cpuPct       = cpu    != null ? cpu.optDouble("usagePercent", 0)  : 0;
-                double memPct       = memory != null ? memory.optDouble("usagePercent", 0) : 0;
-                double diskPct      = disk   != null ? disk.optDouble("usagePercent", 0) : 0;
+                String status = tibia != null ? tibia.optString("serverStatus", "unknown") : "unknown";
+                int    players = tibia != null ? tibia.optInt("playerCount", 0) : 0;
+                double cpuPct  = cpu    != null ? cpu.optDouble("usagePercent", 0)    : 0;
+                double memPct  = memory != null ? memory.optDouble("usagePercent", 0) : 0;
+                double diskPct = disk   != null ? disk.optDouble("usagePercent", 0)   : 0;
 
-                boolean running = "running".equals(serverStatus);
+                boolean running = "running".equals(status);
                 views.setTextViewText(R.id.status_text, running ? "Running" : "Stopped");
                 views.setTextColor(R.id.status_dot, running ? 0xFF4CAF50 : 0xFFF44336);
-                views.setTextViewText(R.id.players_text, playerCount + " online");
+                views.setTextViewText(R.id.players_text, players + " online");
                 views.setTextViewText(R.id.cpu_text,  String.format(Locale.US, "%.0f%%", cpuPct));
                 views.setTextColor(R.id.cpu_text,  usageColor(cpuPct));
                 views.setTextViewText(R.id.ram_text,  String.format(Locale.US, "%.0f%%", memPct));
                 views.setTextColor(R.id.ram_text,  usageColor(memPct));
                 views.setTextViewText(R.id.disk_text, String.format(Locale.US, "%.0f%%", diskPct));
                 views.setTextColor(R.id.disk_text, usageColor(diskPct));
-                views.setTextViewText(R.id.last_updated, "Updated " + timeStr);
+                views.setTextViewText(R.id.last_updated, "Updated " + time);
 
             } catch (Exception e) {
                 views.setTextViewText(R.id.status_text, "Parse error");
-                views.setTextViewText(R.id.last_updated, "Updated " + timeStr);
+                views.setTextViewText(R.id.last_updated, "Updated " + time);
             }
         }
 
@@ -207,15 +253,14 @@ public class TibiaWidgetProvider extends AppWidgetProvider {
     }
 
     private static int usageColor(double pct) {
-        if (pct >= 90) return 0xFFF44336; // red
-        if (pct >= 75) return 0xFFFF9800; // orange
-        return 0xFF4CAF50;                 // green
+        if (pct >= 90) return 0xFFF44336;
+        if (pct >= 75) return 0xFFFF9800;
+        return 0xFF4CAF50;
     }
 
-    // -------------------------------------------------------------------------
-
     static class MetricsResult {
-        JSONObject data        = null;
+        JSONObject data          = null;
+        boolean    notConfigured = false;
         boolean    sessionExpired = false;
         boolean    networkError   = false;
     }

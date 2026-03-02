@@ -3,10 +3,10 @@ import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setBaseURL } from '../services/api';
 import { connectSocket, disconnectSocket } from '../services/socket';
-import TibiaPrefs from '../modules/TibiaPrefs';
 
 const STORAGE_KEYS = {
   BACKEND_URL:  'tibia_backend_url',
+  SESSION_ID:   'tibia_session_id',     // read by Android home-screen widget
   SSH_CONFIG:   'tibia_ssh_config',     // stored in SecureStore (encrypted)
   DB_CONFIG:    'tibia_db_config',      // stored in SecureStore (encrypted)
   PREFERENCES:  'tibia_preferences',
@@ -68,15 +68,16 @@ export function AppProvider({ children }) {
     setSessionId(sid);
     setBaseURL(bURL);
     connectSocket(bURL);
-    // Persist for the Android home-screen widget (no-op on iOS)
-    TibiaPrefs.setValues(bURL, sid);
+    // Persist sessionId for the Android home-screen widget.
+    // The widget reads this directly from AsyncStorage's SQLite database —
+    // no native module required, works on every build.
+    AsyncStorage.setItem(STORAGE_KEYS.SESSION_ID, sid);
   }, []);
 
   const clearConnection = useCallback(() => {
     setSessionId(null);
     disconnectSocket();
-    // Remove widget data so it shows "not configured" until next login
-    TibiaPrefs.clearValues();
+    AsyncStorage.removeItem(STORAGE_KEYS.SESSION_ID);
   }, []);
 
   return (
