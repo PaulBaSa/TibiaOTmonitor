@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  4 × 1 compact widget — no title bar.
+  Two content rows inside a vertical LinearLayout:
+    Row 1: ● status  ·  Players: N  ·  ↻
+    Row 2:   CPU xx%   RAM xx%   DISK xx%
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:orientation="vertical"
+    android:paddingLeft="10dp"
+    android:paddingRight="10dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="4dp">
+
+    <!-- ── Row 1: status · players · refresh ────────────────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Coloured dot -->
+        <TextView
+            android:id="@+id/status_dot"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="&#x25CF; "
+            android:textSize="11sp"
+            android:textColor="#4CAF50" />
+
+        <!-- Server status text, takes all remaining space -->
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <!-- Players label -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Players: "
+            android:textColor="#888888"
+            android:textSize="11sp" />
+
+        <!-- Player count value -->
+        <TextView
+            android:id="@+id/players_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <!-- Refresh button -->
+        <TextView
+            android:id="@+id/refresh_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="&#x21BB;"
+            android:textColor="#C4A535"
+            android:textSize="16sp"
+            android:paddingLeft="8dp" />
+    </LinearLayout>
+
+    <!-- ── Divider ─────────────────────────────────────────────────── -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#2E2E2E"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp" />
+
+    <!-- ── Row 2: CPU · RAM · DISK ──────────────────────────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <!-- CPU -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="CPU "
+                android:textColor="#888888"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/cpu_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#4CAF50"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- RAM -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="RAM "
+                android:textColor="#888888"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/ram_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#4CAF50"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- DISK -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="DISK "
+                android:textColor="#888888"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/disk_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#4CAF50"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Timestamp: right-aligned in the metrics row -->
+        <TextView
+            android:id="@+id/last_updated"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#444444"
+            android:textSize="7sp"
+            android:gravity="end"
+            android:paddingLeft="6dp" />
+    </LinearLayout>
+
+</LinearLayout>

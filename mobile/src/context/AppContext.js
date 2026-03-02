@@ -6,6 +6,8 @@ import { connectSocket, disconnectSocket } from '../services/socket';
 
 const STORAGE_KEYS = {
   BACKEND_URL:  'tibia_backend_url',
+  SESSION_ID:   'tibia_session_id',     // read by Android home-screen widget
+  DB_PARAMS:    'tibia_widget_db_params', // DB query params for widget (plain JSON)
   SSH_CONFIG:   'tibia_ssh_config',     // stored in SecureStore (encrypted)
   DB_CONFIG:    'tibia_db_config',      // stored in SecureStore (encrypted)
   PREFERENCES:  'tibia_preferences',
@@ -27,6 +29,15 @@ export function AppProvider({ children }) {
     await SecureStore.setItemAsync(STORAGE_KEYS.SSH_CONFIG, JSON.stringify(ssh));
     if (db && Object.keys(db).length > 0) {
       await SecureStore.setItemAsync(STORAGE_KEYS.DB_CONFIG, JSON.stringify(db));
+      // Also persist DB params in plain AsyncStorage so the home-screen widget
+      // can append them to the metrics URL (SecureStore is inaccessible from Java).
+      if (db.dbName) {
+        await AsyncStorage.setItem(STORAGE_KEYS.DB_PARAMS, JSON.stringify({
+          dbName: db.dbName,
+          dbUser: db.dbUser || '',
+          dbPass: db.dbPass || '',
+        }));
+      }
     }
   }, []);
 
@@ -42,6 +53,22 @@ export function AppProvider({ children }) {
       if (dbStr)   setDbConfig(JSON.parse(dbStr));
       if (prefStr) setPreferences(JSON.parse(prefStr));
 
+      // One-time migration: copy DB params from SecureStore → AsyncStorage so
+      // the home-screen widget (Java) can read them without a native module.
+      if (dbStr) {
+        const already = await AsyncStorage.getItem(STORAGE_KEYS.DB_PARAMS);
+        if (!already) {
+          const db = JSON.parse(dbStr);
+          if (db.dbName) {
+            await AsyncStorage.setItem(STORAGE_KEYS.DB_PARAMS, JSON.stringify({
+              dbName: db.dbName,
+              dbUser: db.dbUser || '',
+              dbPass: db.dbPass || '',
+            }));
+          }
+        }
+      }
+
       return { backendURL: bURL, sshConfig: sshStr ? JSON.parse(sshStr) : null };
     } catch (_) {
       return {};
@@ -50,6 +77,7 @@ export function AppProvider({ children }) {
 
   const clearSavedConfig = useCallback(async () => {
     await AsyncStorage.removeItem(STORAGE_KEYS.BACKEND_URL);
+    await AsyncStorage.removeItem(STORAGE_KEYS.DB_PARAMS);
     await SecureStore.deleteItemAsync(STORAGE_KEYS.SSH_CONFIG);
     await SecureStore.deleteItemAsync(STORAGE_KEYS.DB_CONFIG);
     setBackendURL('');
@@ -67,11 +95,16 @@ export function AppProvider({ children }) {
     setSessionId(sid);
     setBaseURL(bURL);
     connectSocket(bURL);
+    // Persist sessionId for the Android home-screen widget.
+    // The widget reads this directly from AsyncStorage's SQLite database —
+    // no native module required, works on every build.
+    AsyncStorage.setItem(STORAGE_KEYS.SESSION_ID, sid);
   }, []);
 
   const clearConnection = useCallback(() => {
     setSessionId(null);
     disconnectSocket();
+    AsyncStorage.removeItem(STORAGE_KEYS.SESSION_ID);
   }, []);
 
   return (

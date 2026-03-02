@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Semi-transparent dark card with rounded corners, matching the app theme -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <!-- #E6 = ~90% opacity over the wallpaper -->
+    <solid android:color="#E61A1A1A" />
+    <corners android:radius="16dp" />
+</shape>

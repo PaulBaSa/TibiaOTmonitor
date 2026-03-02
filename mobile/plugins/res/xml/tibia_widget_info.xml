@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  4 × 1 grid size  (formula: 70n − 30)
+    minWidth  = 70×4 − 30 = 250 dp
+    minHeight = 70×1 − 30 =  40 dp
+  targetCellWidth/Height gives Android 12+ launchers a precise grid hint.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="40dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/tibia_widget_layout"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen" />
