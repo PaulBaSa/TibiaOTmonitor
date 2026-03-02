@@ -1,17 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Widget metadata.
-  4 × 2 grid size  (formula: 70n − 30)
+  4 × 1 grid size  (formula: 70n − 30)
     minWidth  = 70×4 − 30 = 250 dp
-    minHeight = 70×2 − 30 = 110 dp
-  updatePeriodMillis="1800000" → system refresh every 30 min (Android min)
+    minHeight = 70×1 − 30 =  40 dp
   targetCellWidth/Height gives Android 12+ launchers a precise grid hint.
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"
-    android:minHeight="110dp"
+    android:minHeight="40dp"
     android:targetCellWidth="4"
-    android:targetCellHeight="2"
+    android:targetCellHeight="1"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/tibia_widget_layout"
     android:resizeMode="horizontal|vertical"
