@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -46,6 +47,7 @@ public class TibiaWidgetProvider extends AppWidgetProvider {
     private static final String AS_DB_NAME     = "RKStorage";
     private static final String AS_BACKEND_URL = "tibia_backend_url";
     private static final String AS_SESSION_ID  = "tibia_session_id";
+    private static final String AS_DB_PARAMS   = "tibia_widget_db_params";
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
@@ -81,6 +83,7 @@ public class TibiaWidgetProvider extends AppWidgetProvider {
             String[] cfg       = readAsyncStorage(context);
             String backendUrl  = cfg[0];
             String sessionId   = cfg[1];
+            String dbParamsJson = cfg[2];
 
             // 2. Fetch metrics (or report not-configured)
             MetricsResult result;
@@ -88,7 +91,7 @@ public class TibiaWidgetProvider extends AppWidgetProvider {
                 result = new MetricsResult();
                 result.notConfigured = true;
             } else {
-                result = fetchMetrics(backendUrl, sessionId);
+                result = fetchMetrics(backendUrl, sessionId, dbParamsJson);
             }
 
             mainHandler.post(() -> applyResult(context, manager, appWidgetId, result));
@@ -101,22 +104,24 @@ public class TibiaWidgetProvider extends AppWidgetProvider {
 
     private static String[] readAsyncStorage(Context context) {
         File dbFile = context.getDatabasePath(AS_DB_NAME);
-        if (!dbFile.exists()) return new String[]{null, null};
+        if (!dbFile.exists()) return new String[]{null, null, null};
 
-        String backendUrl = null;
-        String sessionId  = null;
-        SQLiteDatabase db = null;
+        String backendUrl   = null;
+        String sessionId    = null;
+        String dbParamsJson = null;
+        SQLiteDatabase db   = null;
         try {
             db = SQLiteDatabase.openDatabase(
                     dbFile.getAbsolutePath(), null, SQLiteDatabase.OPEN_READONLY);
             Cursor cursor = db.rawQuery(
-                    "SELECT key, value FROM catalystLocalStorage WHERE key IN (?,?)",
-                    new String[]{AS_BACKEND_URL, AS_SESSION_ID});
+                    "SELECT key, value FROM catalystLocalStorage WHERE key IN (?,?,?)",
+                    new String[]{AS_BACKEND_URL, AS_SESSION_ID, AS_DB_PARAMS});
             while (cursor.moveToNext()) {
                 String key = cursor.getString(0);
                 String val = cursor.getString(1);
-                if (AS_BACKEND_URL.equals(key)) backendUrl = val;
-                else if (AS_SESSION_ID.equals(key))  sessionId  = val;
+                if (AS_BACKEND_URL.equals(key))  backendUrl   = val;
+                else if (AS_SESSION_ID.equals(key))   sessionId    = val;
+                else if (AS_DB_PARAMS.equals(key))    dbParamsJson = val;
             }
             cursor.close();
         } catch (Exception ignored) {
@@ -124,17 +129,32 @@ public class TibiaWidgetProvider extends AppWidgetProvider {
         } finally {
             if (db != null) try { db.close(); } catch (Exception ignored2) {}
         }
-        return new String[]{backendUrl, sessionId};
+        return new String[]{backendUrl, sessionId, dbParamsJson};
     }
 
     // -------------------------------------------------------------------------
     // Network call (background thread)
     // -------------------------------------------------------------------------
 
-    private static MetricsResult fetchMetrics(String backendUrl, String sessionId) {
+    private static MetricsResult fetchMetrics(String backendUrl, String sessionId,
+                                              String dbParamsJson) {
         MetricsResult result = new MetricsResult();
         try {
-            URL url = new URL(backendUrl + "/api/metrics/" + sessionId);
+            // Append DB query params if available so the backend can return playerCount
+            StringBuilder urlStr = new StringBuilder(backendUrl)
+                    .append("/api/metrics/").append(sessionId);
+            if (dbParamsJson != null) {
+                try {
+                    JSONObject p = new JSONObject(dbParamsJson);
+                    String dbName = p.optString("dbName", "");
+                    if (!dbName.isEmpty()) {
+                        urlStr.append("?dbName=").append(URLEncoder.encode(dbName, "UTF-8"))
+                              .append("&dbUser=").append(URLEncoder.encode(p.optString("dbUser", ""), "UTF-8"))
+                              .append("&dbPass=").append(URLEncoder.encode(p.optString("dbPass", ""), "UTF-8"));
+                    }
+                } catch (Exception ignored) {}
+            }
+            URL url = new URL(urlStr.toString());
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(10_000);
@@ -229,7 +249,9 @@ public class TibiaWidgetProvider extends AppWidgetProvider {
                 JSONObject disk   = data.optJSONObject("disk");
 
                 String status = tibia != null ? tibia.optString("serverStatus", "unknown") : "unknown";
-                int    players = tibia != null ? tibia.optInt("playerCount", 0) : 0;
+                // playerCount is null when no DB credentials are configured
+                boolean hasPlayers = tibia != null && !tibia.isNull("playerCount");
+                int     players    = hasPlayers ? tibia.optInt("playerCount", 0) : -1;
                 double cpuPct  = cpu    != null ? cpu.optDouble("usagePercent", 0)    : 0;
                 double memPct  = memory != null ? memory.optDouble("usagePercent", 0) : 0;
                 double diskPct = disk   != null ? disk.optDouble("usagePercent", 0)   : 0;
@@ -237,7 +259,8 @@ public class TibiaWidgetProvider extends AppWidgetProvider {
                 boolean running = "running".equals(status);
                 views.setTextViewText(R.id.status_text, running ? "Running" : "Stopped");
                 views.setTextColor(R.id.status_dot, running ? 0xFF4CAF50 : 0xFFF44336);
-                views.setTextViewText(R.id.players_text, players + " online");
+                views.setTextViewText(R.id.players_text,
+                        players >= 0 ? players + " online" : "\u2014");
                 views.setTextViewText(R.id.cpu_text,  String.format(Locale.US, "%.0f%%", cpuPct));
                 views.setTextColor(R.id.cpu_text,  usageColor(cpuPct));
                 views.setTextViewText(R.id.ram_text,  String.format(Locale.US, "%.0f%%", memPct));
