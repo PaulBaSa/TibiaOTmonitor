@@ -70,7 +70,9 @@
     </LinearLayout>
 
     <!-- ── Divider ─────────────────────────────────────────────────── -->
-    <View
+    <!-- Use TextView, not View: bare View is not in the RemoteViews supported
+         class list and crashes inflation on Samsung One UI / strict launchers. -->
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:background="#2E2E2E"

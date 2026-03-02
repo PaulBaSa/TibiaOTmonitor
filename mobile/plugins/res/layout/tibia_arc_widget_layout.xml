@@ -98,6 +98,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:indeterminate="false"
+                    android:indeterminateDrawable="@android:color/transparent"
                     android:max="100"
                     android:progress="0"
                     android:progressDrawable="@drawable/ring_progress" />
@@ -138,6 +139,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:indeterminate="false"
+                    android:indeterminateDrawable="@android:color/transparent"
                     android:max="100"
                     android:progress="0"
                     android:progressDrawable="@drawable/ring_progress" />
@@ -178,6 +180,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:indeterminate="false"
+                    android:indeterminateDrawable="@android:color/transparent"
                     android:max="100"
                     android:progress="0"
                     android:progressDrawable="@drawable/ring_progress" />
@@ -218,6 +221,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:indeterminate="false"
+                    android:indeterminateDrawable="@android:color/transparent"
                     android:max="200"
                     android:progress="0"
                     android:progressDrawable="@drawable/ring_progress" />
