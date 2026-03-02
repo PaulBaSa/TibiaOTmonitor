@@ -12,7 +12,7 @@ import LogViewer from '../components/LogViewer';
 const MAX_LINES = 1000;
 
 export default function LogsScreen() {
-  const { sessionId } = useApp();
+  const { sessionId, reconnect } = useApp();
 
   const [logFiles,       setLogFiles]       = useState([]);
   const [selectedFile,   setSelectedFile]   = useState(null);
@@ -37,11 +37,25 @@ export default function LogsScreen() {
         setSelectedFile(files[0]);
       }
     } catch (err) {
-      setError(err?.response?.data?.error || err.message);
+      if (err?.response?.status === 401) {
+        // Session expired — reconnect silently and retry once
+        try {
+          const newId = await reconnect();
+          const { files } = await fetchLogFiles(newId);
+          setLogFiles(files);
+          if (files.length > 0 && !selectedFile) {
+            setSelectedFile(files[0]);
+          }
+        } catch (reconnErr) {
+          setError(reconnErr?.response?.data?.error || reconnErr.message);
+        }
+      } else {
+        setError(err?.response?.data?.error || err.message);
+      }
     } finally {
       setLoadingFiles(false);
     }
-  }, [sessionId]);
+  }, [sessionId, reconnect]);
 
   useEffect(() => {
     loadFiles();

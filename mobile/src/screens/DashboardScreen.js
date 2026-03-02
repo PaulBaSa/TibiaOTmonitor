@@ -24,7 +24,7 @@ function usageColor(pct) {
 }
 
 export default function DashboardScreen() {
-  const { sessionId, dbConfig, preferences } = useApp();
+  const { sessionId, dbConfig, preferences, reconnect } = useApp();
 
   const [metrics, setMetrics]     = useState(null);
   const [ping,    setPing]        = useState(null);
@@ -48,12 +48,28 @@ export default function DashboardScreen() {
       setPing(p);
       setLastUpdated(new Date());
     } catch (err) {
-      setFetchError(err?.response?.data?.error || err.message);
+      if (err?.response?.status === 401) {
+        // Session expired — reconnect silently and retry once
+        try {
+          const newId = await reconnect();
+          const [m, p] = await Promise.all([
+            fetchMetrics(newId, dbConfig),
+            fetchPing(),
+          ]);
+          setMetrics(m);
+          setPing(p);
+          setLastUpdated(new Date());
+        } catch (reconnErr) {
+          setFetchError(reconnErr?.response?.data?.error || reconnErr.message);
+        }
+      } else {
+        setFetchError(err?.response?.data?.error || err.message);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [sessionId, dbConfig]);
+  }, [sessionId, dbConfig, reconnect]);
 
   useEffect(() => {
     load();
