@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  4 × 2 bar-style home-screen widget.
+  Inspired by Samsung's compact battery bar widget.
+
+  Layout:
+    Row 0 (header): ● status · players · ↻
+    Divider
+    Row 1: CPU  [████░░░░░]  67%
+    Row 2: RAM  [█████░░░░]  43%
+    Row 3: DISK [██████░░░]  82%
+    Row 4: PING [███░░░░░░]  24ms
+    Footer: timestamp
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:orientation="vertical"
+    android:paddingLeft="12dp"
+    android:paddingRight="12dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="6dp">
+
+    <!-- ── Header row ──────────────────────────────────────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/status_dot"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="&#x25CF;"
+            android:textSize="10sp"
+            android:textColor="#4CAF50"
+            android:paddingRight="4dp" />
+
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/players_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#AAAAAA"
+            android:textSize="10sp"
+            android:paddingRight="4dp" />
+
+        <TextView
+            android:id="@+id/refresh_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="&#x21BB;"
+            android:textColor="#C4A535"
+            android:textSize="15sp" />
+    </LinearLayout>
+
+    <!-- ── Divider ─────────────────────────────────────────────────── -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#2E2E2E"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="2dp" />
+
+    <!-- ── CPU bar row ─────────────────────────────────────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="34dp"
+            android:layout_height="wrap_content"
+            android:text="CPU"
+            android:textColor="#888888"
+            android:textSize="9sp" />
+
+        <ProgressBar
+            android:id="@+id/bar_cpu"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="5dp"
+            android:layout_weight="1"
+            android:max="100"
+            android:progress="0"
+            android:progressTint="#C4A535"
+            android:progressBackgroundTint="#2E2E2E" />
+
+        <TextView
+            android:id="@+id/cpu_text"
+            android:layout_width="38dp"
+            android:layout_height="wrap_content"
+            android:textColor="#4CAF50"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:gravity="end" />
+    </LinearLayout>
+
+    <!-- ── RAM bar row ─────────────────────────────────────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="34dp"
+            android:layout_height="wrap_content"
+            android:text="RAM"
+            android:textColor="#888888"
+            android:textSize="9sp" />
+
+        <ProgressBar
+            android:id="@+id/bar_ram"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="5dp"
+            android:layout_weight="1"
+            android:max="100"
+            android:progress="0"
+            android:progressTint="#C4A535"
+            android:progressBackgroundTint="#2E2E2E" />
+
+        <TextView
+            android:id="@+id/ram_text"
+            android:layout_width="38dp"
+            android:layout_height="wrap_content"
+            android:textColor="#4CAF50"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:gravity="end" />
+    </LinearLayout>
+
+    <!-- ── DISK bar row ────────────────────────────────────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="34dp"
+            android:layout_height="wrap_content"
+            android:text="DISK"
+            android:textColor="#888888"
+            android:textSize="9sp" />
+
+        <ProgressBar
+            android:id="@+id/bar_disk"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="5dp"
+            android:layout_weight="1"
+            android:max="100"
+            android:progress="0"
+            android:progressTint="#C4A535"
+            android:progressBackgroundTint="#2E2E2E" />
+
+        <TextView
+            android:id="@+id/disk_text"
+            android:layout_width="38dp"
+            android:layout_height="wrap_content"
+            android:textColor="#4CAF50"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:gravity="end" />
+    </LinearLayout>
+
+    <!-- ── PING bar row ────────────────────────────────────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="34dp"
+            android:layout_height="wrap_content"
+            android:text="PING"
+            android:textColor="#888888"
+            android:textSize="9sp" />
+
+        <!-- max=200 → full bar = 200 ms latency -->
+        <ProgressBar
+            android:id="@+id/bar_ping"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="5dp"
+            android:layout_weight="1"
+            android:max="200"
+            android:progress="0"
+            android:progressTint="#C4A535"
+            android:progressBackgroundTint="#2E2E2E" />
+
+        <TextView
+            android:id="@+id/ping_text"
+            android:layout_width="38dp"
+            android:layout_height="wrap_content"
+            android:textColor="#4CAF50"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:gravity="end" />
+    </LinearLayout>
+
+    <!-- ── Footer: timestamp ──────────────────────────────────────── -->
+    <TextView
+        android:id="@+id/last_updated"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#444444"
+        android:textSize="7sp"
+        android:gravity="end" />
+
+</LinearLayout>
