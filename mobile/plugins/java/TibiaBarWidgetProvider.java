@@ -274,9 +274,11 @@ public class TibiaBarWidgetProvider extends AppWidgetProvider {
 
             if (r.ping != null && r.ping.optBoolean("alive", false)) {
                 double latency = r.ping.optDouble("latencyMs", 0);
-                int latencyInt = (int) Math.round(latency);
-                views.setProgressBar(R.id.bar_ping, 200, Math.min(latencyInt, 200), false);
-                views.setTextViewText(R.id.ping_text, latencyInt + "ms");
+                int latencyMs  = (int) Math.round(latency);
+                views.setProgressBar(R.id.bar_ping, 200, Math.min(latencyMs, 200), false);
+                // Show "< 1ms" for sub-millisecond LAN/localhost latency
+                String pingLabel = latencyMs < 1 ? "<1ms" : latencyMs + "ms";
+                views.setTextViewText(R.id.ping_text, pingLabel);
                 views.setTextColor(R.id.ping_text, pingColor(latency));
             } else {
                 views.setProgressBar(R.id.bar_ping, 200, 0, false);

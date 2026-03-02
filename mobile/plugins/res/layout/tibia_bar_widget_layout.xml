@@ -3,6 +3,10 @@
   4 × 2 bar-style home-screen widget.
   Inspired by Samsung's compact battery bar widget.
 
+  ProgressBars use @drawable/bar_progress (custom layer-list) instead of
+  android:progressTint / android:progressBackgroundTint — those attrs can
+  crash RemoteViews inflation on Samsung One UI and similar launchers.
+
   Layout:
     Row 0 (header): ● status · players · ↻
     Divider
@@ -90,14 +94,13 @@
 
         <ProgressBar
             android:id="@+id/bar_cpu"
-            style="?android:attr/progressBarStyleHorizontal"
+            style="@android:style/Widget.ProgressBar.Horizontal"
             android:layout_width="0dp"
             android:layout_height="5dp"
             android:layout_weight="1"
             android:max="100"
             android:progress="0"
-            android:progressTint="#C4A535"
-            android:progressBackgroundTint="#2E2E2E" />
+            android:progressDrawable="@drawable/bar_progress" />
 
         <TextView
             android:id="@+id/cpu_text"
@@ -126,14 +129,13 @@
 
         <ProgressBar
             android:id="@+id/bar_ram"
-            style="?android:attr/progressBarStyleHorizontal"
+            style="@android:style/Widget.ProgressBar.Horizontal"
             android:layout_width="0dp"
             android:layout_height="5dp"
             android:layout_weight="1"
             android:max="100"
             android:progress="0"
-            android:progressTint="#C4A535"
-            android:progressBackgroundTint="#2E2E2E" />
+            android:progressDrawable="@drawable/bar_progress" />
 
         <TextView
             android:id="@+id/ram_text"
@@ -162,14 +164,13 @@
 
         <ProgressBar
             android:id="@+id/bar_disk"
-            style="?android:attr/progressBarStyleHorizontal"
+            style="@android:style/Widget.ProgressBar.Horizontal"
             android:layout_width="0dp"
             android:layout_height="5dp"
             android:layout_weight="1"
             android:max="100"
             android:progress="0"
-            android:progressTint="#C4A535"
-            android:progressBackgroundTint="#2E2E2E" />
+            android:progressDrawable="@drawable/bar_progress" />
 
         <TextView
             android:id="@+id/disk_text"
@@ -196,17 +197,16 @@
             android:textColor="#888888"
             android:textSize="9sp" />
 
-        <!-- max=200 → full bar = 200 ms latency -->
+        <!-- max=200: full bar = 200 ms latency -->
         <ProgressBar
             android:id="@+id/bar_ping"
-            style="?android:attr/progressBarStyleHorizontal"
+            style="@android:style/Widget.ProgressBar.Horizontal"
             android:layout_width="0dp"
             android:layout_height="5dp"
             android:layout_weight="1"
             android:max="200"
             android:progress="0"
-            android:progressTint="#C4A535"
-            android:progressBackgroundTint="#2E2E2E" />
+            android:progressDrawable="@drawable/bar_progress" />
 
         <TextView
             android:id="@+id/ping_text"

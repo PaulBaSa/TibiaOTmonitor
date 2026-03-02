@@ -92,6 +92,7 @@ function withWidgetFiles(config) {
       const drawables = [
         'widget_bg.xml',
         'ring_progress.xml',
+        'bar_progress.xml',
       ];
       for (const f of drawables) {
         copyFile(

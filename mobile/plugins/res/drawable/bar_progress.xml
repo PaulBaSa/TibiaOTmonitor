@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Custom horizontal progress bar drawable.
+  Used by ProgressBar widgets in tibia_bar_widget_layout.xml.
+
+  Using a custom drawable instead of android:progressTint /
+  android:progressBackgroundTint avoids RemoteViews inflation failures
+  on Samsung One UI and other heavily-modified launchers.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Background track -->
+    <item android:id="@android:id/background">
+        <shape android:shape="rectangle">
+            <solid android:color="#2E2E2E" />
+            <corners android:radius="3dp" />
+        </shape>
+    </item>
+
+    <!-- Filled portion — clipped by the ProgressBar's progress level -->
+    <item android:id="@android:id/progress">
+        <clip>
+            <shape android:shape="rectangle">
+                <solid android:color="#C4A535" />
+                <corners android:radius="3dp" />
+            </shape>
+        </clip>
+    </item>
+
+</layer-list>
