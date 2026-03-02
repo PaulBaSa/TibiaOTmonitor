@@ -89,12 +89,17 @@
                 android:layout_height="58dp">
 
                 <!--
-                  No style attribute: avoids maxHeight="20dip" from the
-                  horizontal style. android:indeterminate="false" puts the
-                  ProgressBar in determinate mode so setProgressBar() works.
+                  style="Widget.ProgressBar.Horizontal" sets indeterminateOnly="false"
+                  which is the only reliable way to force deterministic mode in a
+                  widget (launcher) context — android:indeterminate="false" alone is
+                  ignored by the default Widget.ProgressBar theme inflated there.
+                  maxHeight="20dip" from the style is irrelevant: the parent FrameLayout
+                  gives EXACTLY 58dp constraints, so resolveSizeAndState always returns
+                  58dp regardless of maxHeight.
                 -->
                 <ProgressBar
                     android:id="@+id/arc_cpu"
+                    style="@android:style/Widget.ProgressBar.Horizontal"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:indeterminate="false"
@@ -136,6 +141,7 @@
 
                 <ProgressBar
                     android:id="@+id/arc_ram"
+                    style="@android:style/Widget.ProgressBar.Horizontal"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:indeterminate="false"
@@ -177,6 +183,7 @@
 
                 <ProgressBar
                     android:id="@+id/arc_disk"
+                    style="@android:style/Widget.ProgressBar.Horizontal"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:indeterminate="false"
@@ -218,6 +225,7 @@
 
                 <ProgressBar
                     android:id="@+id/arc_ping"
+                    style="@android:style/Widget.ProgressBar.Horizontal"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:indeterminate="false"
