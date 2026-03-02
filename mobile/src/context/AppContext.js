@@ -53,6 +53,22 @@ export function AppProvider({ children }) {
       if (dbStr)   setDbConfig(JSON.parse(dbStr));
       if (prefStr) setPreferences(JSON.parse(prefStr));
 
+      // One-time migration: copy DB params from SecureStore → AsyncStorage so
+      // the home-screen widget (Java) can read them without a native module.
+      if (dbStr) {
+        const already = await AsyncStorage.getItem(STORAGE_KEYS.DB_PARAMS);
+        if (!already) {
+          const db = JSON.parse(dbStr);
+          if (db.dbName) {
+            await AsyncStorage.setItem(STORAGE_KEYS.DB_PARAMS, JSON.stringify({
+              dbName: db.dbName,
+              dbUser: db.dbUser || '',
+              dbPass: db.dbPass || '',
+            }));
+          }
+        }
+      }
+
       return { backendURL: bURL, sshConfig: sshStr ? JSON.parse(sshStr) : null };
     } catch (_) {
       return {};
