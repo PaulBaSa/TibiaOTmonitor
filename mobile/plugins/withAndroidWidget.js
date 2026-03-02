@@ -94,6 +94,7 @@ function withWidgetManifest(config) {
         {
           action: [
             { $: { 'android:name': 'android.appwidget.action.APPWIDGET_UPDATE' } },
+            { $: { 'android:name': 'com.tibiaotmonitor.WIDGET_REFRESH' } },
           ],
         },
       ],

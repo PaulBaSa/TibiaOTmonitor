@@ -40,7 +40,10 @@ public class TibiaWidgetProvider extends AppWidgetProvider {
     static final String PREFS_NAME     = "TibiaOTMonitor";  // unused, kept for compat
     static final String ACTION_REFRESH = "com.tibiaotmonitor.WIDGET_REFRESH";
 
-    // Must match AppContext.js → STORAGE_KEYS
+    // @react-native-async-storage/async-storage uses "RKStorage" on Android
+    // (ReactDatabaseSupplier.DATABASE_NAME = "RKStorage", table = catalystLocalStorage)
+    // Keys must match AppContext.js → STORAGE_KEYS
+    private static final String AS_DB_NAME     = "RKStorage";
     private static final String AS_BACKEND_URL = "tibia_backend_url";
     private static final String AS_SESSION_ID  = "tibia_session_id";
 
@@ -97,7 +100,7 @@ public class TibiaWidgetProvider extends AppWidgetProvider {
     // -------------------------------------------------------------------------
 
     private static String[] readAsyncStorage(Context context) {
-        File dbFile = context.getDatabasePath("AsyncStorage");
+        File dbFile = context.getDatabasePath(AS_DB_NAME);
         if (!dbFile.exists()) return new String[]{null, null};
 
         String backendUrl = null;
