@@ -144,14 +144,56 @@ public class TibiaBarWidgetProvider extends AppWidgetProvider {
             if (code == 401 || code == 404) { r.sessionExpired = true; return r; }
             if (code == 200) r.metrics = new JSONObject(readBody(conn));
 
-            // Ping (separate call to /api/ping/:sessionId)
-            conn = openGET(backendUrl + "/api/ping/" + sessionId);
-            if (conn.getResponseCode() == 200) r.ping = new JSONObject(readBody(conn));
+            // Latency: mirror the mobile app's fetchPing() — time 3 /health round-trips
+            // from this device to the backend (NOT an ICMP ping from backend to SSH host,
+            // which would always show ~0ms when both are on the same machine/LAN).
+            r.ping = measureLatency(backendUrl);
 
         } catch (Exception e) {
             r.networkError = true;
         }
         return r;
+    }
+
+    /**
+     * Measures round-trip latency from this device to the backend by timing
+     * three GET /health requests — identical to the mobile app's fetchPing().
+     * Returns a JSONObject with { alive, latencyMs, min, max } or null on error.
+     */
+    private static JSONObject measureLatency(String backendUrl) {
+        final int PROBES = 3;
+        long total = 0;
+        long min   = Long.MAX_VALUE;
+        long max   = Long.MIN_VALUE;
+        int  count = 0;
+        for (int i = 0; i < PROBES; i++) {
+            try {
+                long t0 = System.currentTimeMillis();
+                HttpURLConnection hc = openGET(backendUrl + "/health");
+                hc.setConnectTimeout(5_000);
+                hc.setReadTimeout(5_000);
+                if (hc.getResponseCode() == 200) {
+                    long ms = System.currentTimeMillis() - t0;
+                    total += ms;
+                    min    = Math.min(min, ms);
+                    max    = Math.max(max, ms);
+                    count++;
+                }
+                hc.disconnect();
+            } catch (Exception ignored) {}
+        }
+        if (count == 0) return null;
+        try {
+            double avg = (double) total / count;
+            JSONObject j = new JSONObject();
+            j.put("alive",     true);
+            j.put("latencyMs", Math.round(avg * 10.0) / 10.0);
+            j.put("min",       (double) min);
+            j.put("max",       (double) max);
+            return j;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static HttpURLConnection openGET(String urlStr) throws Exception {
