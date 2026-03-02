@@ -10,6 +10,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.widget.RemoteViews;
 
+import com.tibiaotmonitor.R;
+
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
