@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { setBaseURL } from '../services/api';
+import { setBaseURL, connectSSH } from '../services/api';
 import { connectSocket, disconnectSocket } from '../services/socket';
 
 const STORAGE_KEYS = {
@@ -107,6 +107,21 @@ export function AppProvider({ children }) {
     AsyncStorage.removeItem(STORAGE_KEYS.SESSION_ID);
   }, []);
 
+  /**
+   * Re-establish the SSH session using saved credentials.
+   * Called automatically when a 401 "session not found" is detected.
+   * Returns the new session ID on success, throws on failure.
+   */
+  const reconnect = useCallback(async () => {
+    if (!sshConfig || !backendURL) {
+      throw new Error('No saved credentials — please reconnect manually');
+    }
+    setBaseURL(backendURL);
+    const { sessionId: newId } = await connectSSH(sshConfig);
+    establishConnection(newId, backendURL);
+    return newId;
+  }, [sshConfig, backendURL, establishConnection]);
+
   return (
     <AppContext.Provider value={{
       sessionId,
@@ -122,6 +137,7 @@ export function AppProvider({ children }) {
       updatePreferences,
       establishConnection,
       clearConnection,
+      reconnect,
     }}>
       {children}
     </AppContext.Provider>
