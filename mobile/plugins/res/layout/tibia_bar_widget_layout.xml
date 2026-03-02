@@ -22,10 +22,10 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_bg"
     android:orientation="vertical"
-    android:paddingLeft="12dp"
-    android:paddingRight="12dp"
-    android:paddingTop="8dp"
-    android:paddingBottom="6dp">
+    android:paddingLeft="8dp"
+    android:paddingRight="8dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="4dp">
 
     <!-- ── Header row ──────────────────────────────────────────────── -->
     <LinearLayout
@@ -39,7 +39,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="&#x25CF;"
-            android:textSize="10sp"
+            android:textSize="13sp"
             android:textColor="#4CAF50"
             android:paddingRight="4dp" />
 
@@ -49,7 +49,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:textColor="#FFFFFF"
-            android:textSize="12sp"
+            android:textSize="15sp"
             android:textStyle="bold" />
 
         <TextView
@@ -57,7 +57,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="#AAAAAA"
-            android:textSize="10sp"
+            android:textSize="13sp"
             android:paddingRight="4dp" />
 
         <TextView
@@ -66,7 +66,7 @@
             android:layout_height="wrap_content"
             android:text="&#x21BB;"
             android:textColor="#C4A535"
-            android:textSize="15sp" />
+            android:textSize="22sp" />
     </LinearLayout>
 
     <!-- ── Divider ─────────────────────────────────────────────────── -->
@@ -76,8 +76,8 @@
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:background="#2E2E2E"
-        android:layout_marginTop="4dp"
-        android:layout_marginBottom="2dp" />
+        android:layout_marginTop="3dp"
+        android:layout_marginBottom="1dp" />
 
     <!-- ── CPU bar row ─────────────────────────────────────────────── -->
     <LinearLayout
@@ -88,17 +88,17 @@
         android:gravity="center_vertical">
 
         <TextView
-            android:layout_width="34dp"
+            android:layout_width="42dp"
             android:layout_height="wrap_content"
             android:text="CPU"
             android:textColor="#888888"
-            android:textSize="9sp" />
+            android:textSize="13sp" />
 
         <ProgressBar
             android:id="@+id/bar_cpu"
             style="@android:style/Widget.ProgressBar.Horizontal"
             android:layout_width="0dp"
-            android:layout_height="5dp"
+            android:layout_height="8dp"
             android:layout_weight="1"
             android:max="100"
             android:progress="0"
@@ -106,10 +106,10 @@
 
         <TextView
             android:id="@+id/cpu_text"
-            android:layout_width="38dp"
+            android:layout_width="46dp"
             android:layout_height="wrap_content"
             android:textColor="#4CAF50"
-            android:textSize="12sp"
+            android:textSize="15sp"
             android:textStyle="bold"
             android:gravity="end" />
     </LinearLayout>
@@ -123,17 +123,17 @@
         android:gravity="center_vertical">
 
         <TextView
-            android:layout_width="34dp"
+            android:layout_width="42dp"
             android:layout_height="wrap_content"
             android:text="RAM"
             android:textColor="#888888"
-            android:textSize="9sp" />
+            android:textSize="13sp" />
 
         <ProgressBar
             android:id="@+id/bar_ram"
             style="@android:style/Widget.ProgressBar.Horizontal"
             android:layout_width="0dp"
-            android:layout_height="5dp"
+            android:layout_height="8dp"
             android:layout_weight="1"
             android:max="100"
             android:progress="0"
@@ -141,10 +141,10 @@
 
         <TextView
             android:id="@+id/ram_text"
-            android:layout_width="38dp"
+            android:layout_width="46dp"
             android:layout_height="wrap_content"
             android:textColor="#4CAF50"
-            android:textSize="12sp"
+            android:textSize="15sp"
             android:textStyle="bold"
             android:gravity="end" />
     </LinearLayout>
@@ -158,17 +158,17 @@
         android:gravity="center_vertical">
 
         <TextView
-            android:layout_width="34dp"
+            android:layout_width="42dp"
             android:layout_height="wrap_content"
             android:text="DISK"
             android:textColor="#888888"
-            android:textSize="9sp" />
+            android:textSize="13sp" />
 
         <ProgressBar
             android:id="@+id/bar_disk"
             style="@android:style/Widget.ProgressBar.Horizontal"
             android:layout_width="0dp"
-            android:layout_height="5dp"
+            android:layout_height="8dp"
             android:layout_weight="1"
             android:max="100"
             android:progress="0"
@@ -176,10 +176,10 @@
 
         <TextView
             android:id="@+id/disk_text"
-            android:layout_width="38dp"
+            android:layout_width="46dp"
             android:layout_height="wrap_content"
             android:textColor="#4CAF50"
-            android:textSize="12sp"
+            android:textSize="15sp"
             android:textStyle="bold"
             android:gravity="end" />
     </LinearLayout>
@@ -193,18 +193,18 @@
         android:gravity="center_vertical">
 
         <TextView
-            android:layout_width="34dp"
+            android:layout_width="42dp"
             android:layout_height="wrap_content"
             android:text="PING"
             android:textColor="#888888"
-            android:textSize="9sp" />
+            android:textSize="13sp" />
 
         <!-- max=200: full bar = 200 ms latency -->
         <ProgressBar
             android:id="@+id/bar_ping"
             style="@android:style/Widget.ProgressBar.Horizontal"
             android:layout_width="0dp"
-            android:layout_height="5dp"
+            android:layout_height="8dp"
             android:layout_weight="1"
             android:max="200"
             android:progress="0"
@@ -212,10 +212,10 @@
 
         <TextView
             android:id="@+id/ping_text"
-            android:layout_width="38dp"
+            android:layout_width="46dp"
             android:layout_height="wrap_content"
             android:textColor="#4CAF50"
-            android:textSize="12sp"
+            android:textSize="15sp"
             android:textStyle="bold"
             android:gravity="end" />
     </LinearLayout>
@@ -226,7 +226,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textColor="#444444"
-        android:textSize="7sp"
+        android:textSize="9sp"
         android:gravity="end" />
 
 </LinearLayout>
