@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setBaseURL } from '../services/api';
 import { connectSocket, disconnectSocket } from '../services/socket';
+import TibiaPrefs from '../modules/TibiaPrefs';
 
 const STORAGE_KEYS = {
   BACKEND_URL:  'tibia_backend_url',
@@ -67,11 +68,15 @@ export function AppProvider({ children }) {
     setSessionId(sid);
     setBaseURL(bURL);
     connectSocket(bURL);
+    // Persist for the Android home-screen widget (no-op on iOS)
+    TibiaPrefs.setValues(bURL, sid);
   }, []);
 
   const clearConnection = useCallback(() => {
     setSessionId(null);
     disconnectSocket();
+    // Remove widget data so it shows "not configured" until next login
+    TibiaPrefs.clearValues();
   }, []);
 
   return (

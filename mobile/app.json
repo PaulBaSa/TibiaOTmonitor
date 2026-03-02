@@ -41,7 +41,8 @@
         "android": {
           "usesCleartextTraffic": true
         }
-      }]
+      }],
+      "./plugins/withAndroidWidget"
     ]
   }
 }
