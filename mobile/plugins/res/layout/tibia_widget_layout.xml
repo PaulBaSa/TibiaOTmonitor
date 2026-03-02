@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Home-screen widget layout for TibiaOT Monitor.
-  Only views supported by RemoteViews are used (LinearLayout, TextView, View).
+  RemoteViews only supports: FrameLayout, LinearLayout, RelativeLayout,
+  GridLayout, AnalogClock, Button, Chronometer, ImageButton, ImageView,
+  ProgressBar, TextView, ViewFlipper, ListView, GridView, StackView,
+  AdapterViewFlipper — plain <View> is NOT on that list and will cause
+  an InflateException ("Couldn't add widget."). Use <TextView> for dividers.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_container"
@@ -22,7 +25,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="&#x2694; TibiaOT Monitor"
+            android:text="TibiaOT Monitor"
             android:textColor="#C4A535"
             android:textSize="12sp"
             android:textStyle="bold" />
@@ -38,8 +41,8 @@
             android:padding="4dp" />
     </LinearLayout>
 
-    <!-- ── Divider ──────────────────────────────────────────────────── -->
-    <View
+    <!-- ── Horizontal divider — TextView instead of View ────────────── -->
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:background="#2E2E2E"
@@ -60,7 +63,7 @@
             android:textColor="#AAAAAA"
             android:textSize="11sp" />
 
-        <!-- Coloured dot — green when running, red when stopped -->
+        <!-- Coloured dot — updated at runtime -->
         <TextView
             android:id="@+id/status_dot"
             android:layout_width="wrap_content"
@@ -102,7 +105,7 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- ── CPU / RAM / DISK row ─────────────────────────────────────── -->
+    <!-- ── CPU / RAM / DISK row — no <View> dividers ────────────────── -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -133,12 +136,6 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Vertical divider -->
-        <View
-            android:layout_width="1dp"
-            android:layout_height="30dp"
-            android:background="#2E2E2E" />
-
         <!-- RAM -->
         <LinearLayout
             android:layout_width="0dp"
@@ -162,12 +159,6 @@
                 android:textSize="14sp"
                 android:textStyle="bold" />
         </LinearLayout>
-
-        <!-- Vertical divider -->
-        <View
-            android:layout_width="1dp"
-            android:layout_height="30dp"
-            android:background="#2E2E2E" />
 
         <!-- DISK -->
         <LinearLayout
