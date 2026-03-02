@@ -3,11 +3,12 @@
   4 × 2 arc-style home-screen widget.
   Inspired by Samsung's circular arc battery widget.
 
-  IMPORTANT: the arc ProgressBars must NOT use
-  style="?android:attr/progressBarStyleHorizontal" — that style sets
-  android:maxHeight="20dip" which squashes the 58dp ring to a tiny sliver.
-  Instead we set android:indeterminate="false" explicitly and let the view
-  fill its parent via layout_width/height="match_parent".
+  Each ProgressBar uses style="Widget.ProgressBar.Horizontal" which sets
+  indeterminateOnly="false" — the only reliable way to keep deterministic
+  mode in the launcher process (android:indeterminate="false" alone is
+  ignored by the default Widget.ProgressBar theme there).
+  maxHeight="20dip" from that style is irrelevant: the 60dp FrameLayout
+  parent gives EXACTLY constraints so resolveSizeAndState always returns 60dp.
 
   Layout:
     Row 0 (header): ● status · players · ↻
@@ -23,8 +24,8 @@
     android:orientation="vertical"
     android:paddingLeft="10dp"
     android:paddingRight="10dp"
-    android:paddingTop="8dp"
-    android:paddingBottom="6dp">
+    android:paddingTop="6dp"
+    android:paddingBottom="4dp">
 
     <!-- ── Header row ──────────────────────────────────────────────── -->
     <LinearLayout
@@ -38,7 +39,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="&#x25CF;"
-            android:textSize="10sp"
+            android:textSize="12sp"
             android:textColor="#4CAF50"
             android:paddingRight="4dp" />
 
@@ -48,7 +49,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:textColor="#FFFFFF"
-            android:textSize="12sp"
+            android:textSize="13sp"
             android:textStyle="bold" />
 
         <TextView
@@ -56,7 +57,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="#AAAAAA"
-            android:textSize="10sp"
+            android:textSize="12sp"
             android:paddingRight="4dp" />
 
         <TextView
@@ -85,18 +86,9 @@
             android:gravity="center">
 
             <FrameLayout
-                android:layout_width="58dp"
-                android:layout_height="58dp">
+                android:layout_width="60dp"
+                android:layout_height="60dp">
 
-                <!--
-                  style="Widget.ProgressBar.Horizontal" sets indeterminateOnly="false"
-                  which is the only reliable way to force deterministic mode in a
-                  widget (launcher) context — android:indeterminate="false" alone is
-                  ignored by the default Widget.ProgressBar theme inflated there.
-                  maxHeight="20dip" from the style is irrelevant: the parent FrameLayout
-                  gives EXACTLY 58dp constraints, so resolveSizeAndState always returns
-                  58dp regardless of maxHeight.
-                -->
                 <ProgressBar
                     android:id="@+id/arc_cpu"
                     style="@android:style/Widget.ProgressBar.Horizontal"
@@ -114,7 +106,7 @@
                     android:layout_height="match_parent"
                     android:gravity="center"
                     android:textColor="#4CAF50"
-                    android:textSize="13sp"
+                    android:textSize="16sp"
                     android:textStyle="bold" />
             </FrameLayout>
 
@@ -123,8 +115,8 @@
                 android:layout_height="wrap_content"
                 android:text="CPU"
                 android:textColor="#888888"
-                android:textSize="9sp"
-                android:layout_marginTop="2dp" />
+                android:textSize="11sp"
+                android:layout_marginTop="1dp" />
         </LinearLayout>
 
         <!-- RAM arc tile -->
@@ -136,8 +128,8 @@
             android:gravity="center">
 
             <FrameLayout
-                android:layout_width="58dp"
-                android:layout_height="58dp">
+                android:layout_width="60dp"
+                android:layout_height="60dp">
 
                 <ProgressBar
                     android:id="@+id/arc_ram"
@@ -156,7 +148,7 @@
                     android:layout_height="match_parent"
                     android:gravity="center"
                     android:textColor="#4CAF50"
-                    android:textSize="13sp"
+                    android:textSize="16sp"
                     android:textStyle="bold" />
             </FrameLayout>
 
@@ -165,8 +157,8 @@
                 android:layout_height="wrap_content"
                 android:text="RAM"
                 android:textColor="#888888"
-                android:textSize="9sp"
-                android:layout_marginTop="2dp" />
+                android:textSize="11sp"
+                android:layout_marginTop="1dp" />
         </LinearLayout>
 
         <!-- DISK arc tile -->
@@ -178,8 +170,8 @@
             android:gravity="center">
 
             <FrameLayout
-                android:layout_width="58dp"
-                android:layout_height="58dp">
+                android:layout_width="60dp"
+                android:layout_height="60dp">
 
                 <ProgressBar
                     android:id="@+id/arc_disk"
@@ -198,7 +190,7 @@
                     android:layout_height="match_parent"
                     android:gravity="center"
                     android:textColor="#4CAF50"
-                    android:textSize="13sp"
+                    android:textSize="16sp"
                     android:textStyle="bold" />
             </FrameLayout>
 
@@ -207,8 +199,8 @@
                 android:layout_height="wrap_content"
                 android:text="DISK"
                 android:textColor="#888888"
-                android:textSize="9sp"
-                android:layout_marginTop="2dp" />
+                android:textSize="11sp"
+                android:layout_marginTop="1dp" />
         </LinearLayout>
 
         <!-- PING arc tile — max=200ms fills the ring -->
@@ -220,8 +212,8 @@
             android:gravity="center">
 
             <FrameLayout
-                android:layout_width="58dp"
-                android:layout_height="58dp">
+                android:layout_width="60dp"
+                android:layout_height="60dp">
 
                 <ProgressBar
                     android:id="@+id/arc_ping"
@@ -240,7 +232,7 @@
                     android:layout_height="match_parent"
                     android:gravity="center"
                     android:textColor="#4CAF50"
-                    android:textSize="11sp"
+                    android:textSize="13sp"
                     android:textStyle="bold" />
             </FrameLayout>
 
@@ -249,8 +241,8 @@
                 android:layout_height="wrap_content"
                 android:text="PING"
                 android:textColor="#888888"
-                android:textSize="9sp"
-                android:layout_marginTop="2dp" />
+                android:textSize="11sp"
+                android:layout_marginTop="1dp" />
         </LinearLayout>
 
     </LinearLayout>
@@ -261,7 +253,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textColor="#444444"
-        android:textSize="7sp"
+        android:textSize="8sp"
         android:gravity="end" />
 
 </LinearLayout>
