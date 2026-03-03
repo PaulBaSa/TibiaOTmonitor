@@ -183,8 +183,8 @@ export default function DashboardScreen() {
           label="CPU Usage"
           value={m?.cpu ? `${m.cpu.usagePercent.toFixed(1)}%` : '—'}
           subValue={m?.cpu?.temperature != null
-            ? `${m.cpu.temperature}°C`
-            : `${sys?.cpuCores || '?'} cores`}
+            ? `${m.cpu.temperature}°C · ${ping?.alive ? `${ping.latencyMs?.toFixed(0)}ms` : 'N/A'}`
+            : `${sys?.cpuCores || '?'} cores · ${ping?.alive ? `${ping.latencyMs?.toFixed(0)}ms` : 'N/A'}`}
           progress={m?.cpu?.usagePercent}
           barColor={usageColor(m?.cpu?.usagePercent)}
         />

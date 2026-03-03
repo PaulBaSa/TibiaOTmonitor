@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Determinate circular (ring) progress drawable.
+  Used by ProgressBar widgets in tibia_arc_widget_layout.xml.
+
+  The rotate wrapper starts the fill at 12 o'clock (top).
+  The ring shape uses useLevel="true" so Android clips the sweep
+  according to the ProgressBar's progress / max ratio.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Background track ring (always fully drawn) -->
+    <item android:id="@android:id/background">
+        <shape
+            android:shape="ring"
+            android:innerRadiusRatio="3.4"
+            android:thicknessRatio="11.0"
+            android:useLevel="false">
+            <solid android:color="#2E2E2E" />
+        </shape>
+    </item>
+
+    <!-- Foreground fill — level-clipped ring starting from top (−90°) -->
+    <item android:id="@android:id/progress">
+        <rotate
+            android:fromDegrees="-90"
+            android:toDegrees="-90"
+            android:pivotX="50%"
+            android:pivotY="50%">
+            <shape
+                android:shape="ring"
+                android:innerRadiusRatio="3.4"
+                android:thicknessRatio="11.0"
+                android:useLevel="true">
+                <solid android:color="#C4A535" />
+            </shape>
+        </rotate>
+    </item>
+
+</layer-list>
