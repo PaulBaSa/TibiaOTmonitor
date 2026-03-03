@@ -8,8 +8,6 @@ import { useApp } from '../context/AppContext';
 import { fetchMetrics, fetchPing } from '../services/api';
 import MetricCard from '../components/MetricCard';
 import StatusBadge from '../components/StatusBadge';
-import ArcWidget from '../components/ArcWidget';
-import BarWidget from '../components/BarWidget';
 
 function formatBytes(bytes) {
   if (bytes == null) return '—';
@@ -154,15 +152,6 @@ export default function DashboardScreen() {
           <Text style={styles.inlineErrorText}>⚠️ {fetchError}</Text>
         </View>
       )}
-
-      {/* Battery-style overview widgets */}
-      <View style={styles.sectionLabel}>
-        <Text style={styles.sectionLabelText}>Overview</Text>
-      </View>
-      <ArcWidget cpu={m?.cpu} memory={mem} disk={disk} ping={ping} />
-      <View style={{ height: spacing.sm }} />
-      <BarWidget cpu={m?.cpu} memory={mem} disk={disk} ping={ping} />
-      <View style={{ height: spacing.sm }} />
 
       {/* Top stats row */}
       <View style={styles.row}>
