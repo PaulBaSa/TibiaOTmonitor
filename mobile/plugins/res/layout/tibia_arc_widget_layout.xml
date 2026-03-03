@@ -7,8 +7,8 @@
   indeterminateOnly="false" — the only reliable way to keep deterministic
   mode in the launcher process (android:indeterminate="false" alone is
   ignored by the default Widget.ProgressBar theme there).
-  maxHeight="20dip" from that style is irrelevant: the 64dp FrameLayout
-  parent gives EXACTLY constraints so resolveSizeAndState always returns 64dp.
+  maxHeight="20dip" from that style is irrelevant: the 80dp FrameLayout
+  parent gives EXACTLY constraints so resolveSizeAndState always returns 80dp.
 
   Layout:
     Row 0 (header): ● status · players · ↻
@@ -86,8 +86,8 @@
             android:gravity="center">
 
             <FrameLayout
-                android:layout_width="64dp"
-                android:layout_height="64dp">
+                android:layout_width="80dp"
+                android:layout_height="80dp">
 
                 <ProgressBar
                     android:id="@+id/arc_cpu"
@@ -127,8 +127,8 @@
             android:gravity="center">
 
             <FrameLayout
-                android:layout_width="64dp"
-                android:layout_height="64dp">
+                android:layout_width="80dp"
+                android:layout_height="80dp">
 
                 <ProgressBar
                     android:id="@+id/arc_ram"
@@ -168,8 +168,8 @@
             android:gravity="center">
 
             <FrameLayout
-                android:layout_width="64dp"
-                android:layout_height="64dp">
+                android:layout_width="80dp"
+                android:layout_height="80dp">
 
                 <ProgressBar
                     android:id="@+id/arc_disk"
@@ -209,8 +209,8 @@
             android:gravity="center">
 
             <FrameLayout
-                android:layout_width="64dp"
-                android:layout_height="64dp">
+                android:layout_width="80dp"
+                android:layout_height="80dp">
 
                 <ProgressBar
                     android:id="@+id/arc_ping"
