@@ -17,7 +17,12 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tibiaotmonitor",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "entitlements": {
+        "keychain-access-groups": [
+          "$(AppIdentifierPrefix)com.tibiaotmonitor"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {

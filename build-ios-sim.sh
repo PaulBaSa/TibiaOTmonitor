@@ -7,6 +7,9 @@
 
 set -euo pipefail
 
+# Prefer Homebrew Ruby so CocoaPods uses a modern Ruby (not the broken system 2.6)
+export PATH="/usr/local/opt/ruby/bin:/usr/local/lib/ruby/gems/3.2.0/bin:$PATH"
+
 # ── Argument handling ─────────────────────────────────────────────────────────
 
 BUILD_TYPE="${1:-debug}"
@@ -77,10 +80,11 @@ xcodebuild build \
   -scheme    "$SCHEME" \
   -configuration "$CONFIGURATION" \
   -sdk iphonesimulator \
+  -destination "generic/platform=iOS Simulator" \
   -derivedDataPath "$DERIVED_DATA" \
-  CODE_SIGN_IDENTITY="" \
+  CODE_SIGN_IDENTITY="-" \
   CODE_SIGNING_REQUIRED=NO \
-  CODE_SIGNING_ALLOWED=NO
+  CODE_SIGNING_ALLOWED=YES
 
 APP_PATH=$(find "$DERIVED_DATA/Build/Products/$CONFIGURATION-iphonesimulator" \
   -maxdepth 1 -name "*.app" 2>/dev/null | head -1)
