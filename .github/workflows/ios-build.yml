@@ -198,11 +198,32 @@ jobs:
 
       # ── Export IPA ────────────────────────────────────────────────────────────
 
+      # Read bundle ID from app.json so we can pass it into ExportOptions
+      - name: Read bundle ID
+        id: bundle
+        run: |
+          BUNDLE_ID=$(node -e "const a=require('./mobile/app.json'); console.log(a.expo?.ios?.bundleIdentifier || a.expo?.bundleIdentifier || '')")
+          echo "id=$BUNDLE_ID" >> $GITHUB_OUTPUT
+          echo "Bundle ID: $BUNDLE_ID"
+
       - name: Export IPA (pull request — no upload)
         if: >
           steps.signing.outputs.mode != 'none' &&
           github.event_name != 'push'
         run: |
+          # For manual signing, provisioningProfiles tells xcodebuild which
+          # profile to use during export (without it, it falls back to cloud
+          # signing and fails with exit 70).
+          PROV_PROFILES_ENTRY=""
+          if [ "${{ steps.signing.outputs.mode }}" = "manual" ]; then
+            PROV_PROFILES_ENTRY="
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>${{ steps.bundle.outputs.id }}</key>
+              <string>${{ env.PROVISIONING_PROFILE_UUID }}</string>
+            </dict>"
+          fi
+
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -222,6 +243,7 @@ jobs:
             <true/>
             <key>teamID</key>
             <string>${{ secrets.APPLE_TEAM_ID }}</string>
+            ${PROV_PROFILES_ENTRY}
           </dict>
           </plist>
           PLIST
@@ -241,6 +263,16 @@ jobs:
           github.event_name == 'push' &&
           (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         run: |
+          PROV_PROFILES_ENTRY=""
+          if [ "${{ steps.signing.outputs.mode }}" = "manual" ]; then
+            PROV_PROFILES_ENTRY="
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>${{ steps.bundle.outputs.id }}</key>
+              <string>${{ env.PROVISIONING_PROFILE_UUID }}</string>
+            </dict>"
+          fi
+
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -260,6 +292,7 @@ jobs:
             <true/>
             <key>teamID</key>
             <string>${{ secrets.APPLE_TEAM_ID }}</string>
+            ${PROV_PROFILES_ENTRY}
           </dict>
           </plist>
           PLIST
