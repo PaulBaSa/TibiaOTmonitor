@@ -17,6 +17,9 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tuinsomnia.tibiaotmonitor",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
       "buildNumber": "1",
       "entitlements": {
         "keychain-access-groups": [

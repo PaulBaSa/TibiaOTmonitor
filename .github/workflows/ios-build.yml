@@ -1,18 +1,13 @@
 name: Build iOS IPA
 
-# Mirrors the structure of android-build.yml.
-# iOS builds must run on macOS (Xcode is macOS-only).
-#
-# Required repository secrets for signed IPA production:
+# Required repository secrets:
 #   IOS_CERTIFICATE_BASE64          — base64-encoded Apple Distribution .p12 certificate
 #   IOS_CERTIFICATE_PASSWORD        — password used to export/encrypt the .p12
-#   IOS_PROVISIONING_PROFILE_BASE64 — base64-encoded .mobileprovision file (Ad Hoc or App Store)
+#   IOS_PROVISIONING_PROFILE_BASE64 — base64-encoded App Store Distribution .mobileprovision
 #   IOS_PROVISIONING_PROFILE_UUID   — UUID of that provisioning profile
-#   APPLE_TEAM_ID                   — 10-character Apple Developer Team ID
-#
-# Without those secrets the job produces a simulator build instead and
-# prints a warning — matching the android-build.yml behaviour for missing
-# signing keys.
+#   APPLE_TEAM_ID                   — 10-character Apple Developer Team ID (W449469S62)
+#   APPLE_ID                        — Apple ID email (for TestFlight upload, push to main only)
+#   APPLE_APP_SPECIFIC_PASSWORD     — App-specific password from appleid.apple.com
 
 on:
   push:
@@ -51,6 +46,14 @@ jobs:
       - name: Run Expo prebuild
         working-directory: mobile
         run: npx expo prebuild --platform ios --no-install
+
+      # expo prebuild injects CODE_SIGN_IDENTITY[sdk=iphoneos*] = "iPhone Developer"
+      # which conflicts with Distribution signing — remove it so our CI overrides win.
+      - name: Patch Xcode signing for distribution
+        run: |
+          PBXPROJ="mobile/ios/TibiaOTMonitor.xcodeproj/project.pbxproj"
+          sed -i '' '/"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]"/d' "$PBXPROJ"
+          echo "Patched: removed conflicting CODE_SIGN_IDENTITY from pbxproj"
 
       # Cache is keyed on package-lock.json because that file determines
       # which native modules (and therefore which pods) are installed.
@@ -118,8 +121,6 @@ jobs:
 
       # ── Xcode workspace / scheme detection ───────────────────────────────────
 
-      # expo prebuild names the workspace after the app name from app.json.
-      # We detect it dynamically so the workflow survives a rename.
       - name: Detect Xcode workspace and scheme
         id: xcode
         working-directory: mobile/ios
@@ -148,7 +149,8 @@ jobs:
             -archivePath "$RUNNER_TEMP/app.xcarchive" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.IOS_PROVISIONING_PROFILE_UUID }}"
+            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.IOS_PROVISIONING_PROFILE_UUID }}" \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}"
 
       - name: Export IPA
         if: steps.signing.outputs.available == 'true'
@@ -161,10 +163,16 @@ jobs:
           <plist version="1.0">
           <dict>
             <key>method</key>
-            <string>ad-hoc</string>
+            <string>app-store</string>
+            <key>destination</key>
+            <string>export</string>
             <key>signingStyle</key>
             <string>manual</string>
             <key>stripSwiftSymbols</key>
+            <true/>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
             <true/>
             <key>teamID</key>
             <string>${TEAM_ID}</string>
@@ -176,6 +184,29 @@ jobs:
             -archivePath        "$RUNNER_TEMP/app.xcarchive" \
             -exportPath         "$RUNNER_TEMP/ipa" \
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+
+      # ── Upload to TestFlight (push to main only) ──────────────────────────────
+
+      - name: Upload to TestFlight
+        if: >
+          steps.signing.outputs.available == 'true' &&
+          github.event_name == 'push' &&
+          (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          IPA_PATH=$(find "$RUNNER_TEMP/ipa" -name "*.ipa" | head -1)
+          if [ -z "$IPA_PATH" ]; then
+            echo "ERROR: No .ipa found in $RUNNER_TEMP/ipa" >&2
+            exit 1
+          fi
+          echo "Uploading $IPA_PATH to TestFlight..."
+          xcrun altool --upload-app \
+            --type ios \
+            --file "$IPA_PATH" \
+            --username "$APPLE_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD"
 
       # ── Unsigned simulator build (fallback when secrets are absent) ───────────
 
