@@ -1,13 +1,10 @@
 name: Build iOS IPA
 
 # Required repository secrets:
-#   IOS_CERTIFICATE_BASE64          — base64-encoded Apple Distribution .p12 certificate
-#   IOS_CERTIFICATE_PASSWORD        — password used to export/encrypt the .p12
-#   IOS_PROVISIONING_PROFILE_BASE64 — base64-encoded App Store Distribution .mobileprovision
-#   IOS_PROVISIONING_PROFILE_UUID   — UUID of that provisioning profile
-#   APPLE_TEAM_ID                   — 10-character Apple Developer Team ID (W449469S62)
-#   APPLE_ID                        — Apple ID email (for TestFlight upload, push to main only)
-#   APPLE_APP_SPECIFIC_PASSWORD     — App-specific password from appleid.apple.com
+#   APP_STORE_CONNECT_API_KEY_ID      — Key ID from App Store Connect (e.g. ABC1234567)
+#   APP_STORE_CONNECT_API_ISSUER_ID   — Issuer ID from App Store Connect (UUID format)
+#   APP_STORE_CONNECT_API_KEY_BASE64  — base64-encoded .p8 private key file
+#   APPLE_TEAM_ID                     — 10-character Apple Developer Team ID
 
 on:
   push:
@@ -48,15 +45,14 @@ jobs:
         run: npx expo prebuild --platform ios --no-install
 
       # expo prebuild injects CODE_SIGN_IDENTITY[sdk=iphoneos*] = "iPhone Developer"
-      # which conflicts with Distribution signing — remove it so our CI overrides win.
+      # which conflicts with Automatic distribution signing — remove it so Xcode
+      # can freely pick the Distribution certificate.
       - name: Patch Xcode signing for distribution
         run: |
           PBXPROJ="mobile/ios/TibiaOTMonitor.xcodeproj/project.pbxproj"
           sed -i '' '/"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]"/d' "$PBXPROJ"
           echo "Patched: removed conflicting CODE_SIGN_IDENTITY from pbxproj"
 
-      # Cache is keyed on package-lock.json because that file determines
-      # which native modules (and therefore which pods) are installed.
       - name: Cache CocoaPods
         uses: actions/cache@v4
         with:
@@ -68,56 +64,30 @@ jobs:
         working-directory: mobile/ios
         run: pod install
 
-      # ── Signing setup ─────────────────────────────────────────────────────────
+      # ── API Key setup ──────────────────────────────────────────────────────────
 
-      - name: Check signing secrets
+      - name: Check API key secret
         id: signing
         env:
-          CERTIFICATE_B64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          API_KEY_B64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
         run: |
-          if [ -n "$CERTIFICATE_B64" ]; then
+          if [ -n "$API_KEY_B64" ]; then
             echo "available=true" >> $GITHUB_OUTPUT
           else
             echo "available=false" >> $GITHUB_OUTPUT
           fi
 
-      # Creates a temporary keychain, imports the P12 certificate into it, and
-      # installs the provisioning profile — standard pattern for CI signing.
-      - name: Setup code signing
+      # Writes the .p8 key to a temp file so xcodebuild can authenticate
+      # against App Store Connect for both provisioning and upload.
+      - name: Setup App Store Connect API key
         if: steps.signing.outputs.available == 'true'
         env:
-          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
-          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
-          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
         run: |
-          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
-          KEYCHAIN_PASSWORD=$(openssl rand -base64 12)
-
-          # Create and configure a temporary keychain
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security list-keychain -d user -s "$KEYCHAIN_PATH"
-
-          # Decode and import distribution certificate
-          CERTIFICATE_PATH="$RUNNER_TEMP/certificate.p12"
-          echo "$IOS_CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
-          security import "$CERTIFICATE_PATH" \
-            -P "$IOS_CERTIFICATE_PASSWORD" \
-            -A -t cert -f pkcs12 \
-            -k "$KEYCHAIN_PATH"
-          # Allow codesign to access the key without prompting
-          security set-key-partition-list \
-            -S apple-tool:,apple: \
-            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-          # Decode and install provisioning profile; use its UUID as filename
-          # (Xcode locates profiles by UUID, not by filename)
-          PP_PATH="$RUNNER_TEMP/profile.mobileprovision"
-          echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PP_PATH"
-          PP_UUID=$(security cms -D -i "$PP_PATH" | plutil -extract UUID raw -)
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$PP_UUID".mobileprovision
+          API_KEY_PATH="$RUNNER_TEMP/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
+          echo "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode > "$API_KEY_PATH"
+          echo "API_KEY_PATH=$API_KEY_PATH" >> $GITHUB_ENV
 
       # ── Xcode workspace / scheme detection ───────────────────────────────────
 
@@ -135,8 +105,11 @@ jobs:
           echo "scheme=$SCHEME"       >> $GITHUB_OUTPUT
           echo "Detected workspace: $WORKSPACE  scheme: $SCHEME"
 
-      # ── Signed build (archive → IPA) ─────────────────────────────────────────
+      # ── Archive ───────────────────────────────────────────────────────────────
 
+      # Mirrors the local build-ios-testflight.sh: uses Automatic signing +
+      # -allowProvisioningUpdates so xcodebuild fetches/creates profiles itself
+      # via the API key — no manual certificate or profile secrets needed.
       - name: Archive (signed release)
         if: steps.signing.outputs.available == 'true'
         working-directory: mobile/ios
@@ -145,19 +118,26 @@ jobs:
             -workspace "${{ steps.xcode.outputs.workspace }}" \
             -scheme    "${{ steps.xcode.outputs.scheme }}" \
             -configuration Release \
-            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
             -archivePath "$RUNNER_TEMP/app.xcarchive" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.IOS_PROVISIONING_PROFILE_UUID }}" \
-            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}"
+            CODE_SIGN_STYLE=Automatic \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "${{ env.API_KEY_PATH }}" \
+            -authenticationKeyID "${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}"
 
-      - name: Export IPA
-        if: steps.signing.outputs.available == 'true'
+      # ── Export IPA ────────────────────────────────────────────────────────────
+
+      # On pull requests: export to a local IPA only (no upload).
+      # On push to main/master: destination=upload sends directly to TestFlight,
+      # authenticated via the API key — no APPLE_ID or app-specific password needed.
+      - name: Export IPA (pull request — no upload)
+        if: >
+          steps.signing.outputs.available == 'true' &&
+          github.event_name != 'push'
         run: |
-          TEAM_ID="${{ secrets.APPLE_TEAM_ID }}"
-
-          cat > "$RUNNER_TEMP/ExportOptions.plist" << EOF
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -167,7 +147,7 @@ jobs:
             <key>destination</key>
             <string>export</string>
             <key>signingStyle</key>
-            <string>manual</string>
+            <string>automatic</string>
             <key>stripSwiftSymbols</key>
             <true/>
             <key>uploadBitcode</key>
@@ -175,38 +155,57 @@ jobs:
             <key>uploadSymbols</key>
             <true/>
             <key>teamID</key>
-            <string>${TEAM_ID}</string>
+            <string>${{ secrets.APPLE_TEAM_ID }}</string>
           </dict>
           </plist>
-          EOF
+          PLIST
 
           xcodebuild -exportArchive \
             -archivePath        "$RUNNER_TEMP/app.xcarchive" \
             -exportPath         "$RUNNER_TEMP/ipa" \
-            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "${{ env.API_KEY_PATH }}" \
+            -authenticationKeyID "${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}"
 
-      # ── Upload to TestFlight (push to main only) ──────────────────────────────
-
-      - name: Upload to TestFlight
+      - name: Export and upload to TestFlight (push to main)
         if: >
           steps.signing.outputs.available == 'true' &&
           github.event_name == 'push' &&
           (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
         run: |
-          IPA_PATH=$(find "$RUNNER_TEMP/ipa" -name "*.ipa" | head -1)
-          if [ -z "$IPA_PATH" ]; then
-            echo "ERROR: No .ipa found in $RUNNER_TEMP/ipa" >&2
-            exit 1
-          fi
-          echo "Uploading $IPA_PATH to TestFlight..."
-          xcrun altool --upload-app \
-            --type ios \
-            --file "$IPA_PATH" \
-            --username "$APPLE_ID" \
-            --password "$APPLE_APP_SPECIFIC_PASSWORD"
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>destination</key>
+            <string>upload</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>teamID</key>
+            <string>${{ secrets.APPLE_TEAM_ID }}</string>
+          </dict>
+          </plist>
+          PLIST
+
+          xcodebuild -exportArchive \
+            -archivePath        "$RUNNER_TEMP/app.xcarchive" \
+            -exportPath         "$RUNNER_TEMP/ipa" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "${{ env.API_KEY_PATH }}" \
+            -authenticationKeyID "${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}"
 
       # ── Unsigned simulator build (fallback when secrets are absent) ───────────
 
@@ -214,7 +213,7 @@ jobs:
         if: steps.signing.outputs.available == 'false'
         working-directory: mobile/ios
         run: |
-          echo "::warning::Signing secrets not configured — building for simulator only (no IPA produced)"
+          echo "::warning::APP_STORE_CONNECT_API_KEY_BASE64 not configured — building for simulator only (no IPA produced)"
           xcodebuild build \
             -workspace "${{ steps.xcode.outputs.workspace }}" \
             -scheme    "${{ steps.xcode.outputs.scheme }}" \
