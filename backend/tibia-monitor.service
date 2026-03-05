@@ -1,0 +1,30 @@
+[Unit]
+Description=Tibia Monitor Backend Service
+After=network.target
+
+[Service]
+# The restricted user you created
+User=monitor
+Group=monitor
+
+# The absolute path to your backend folder
+WorkingDirectory=/opt/TibiaOTmonitor/backend
+
+# Use the absolute path to node (usually /usr/bin/node)
+ExecStart=/usr/bin/node server.js
+
+# Environment variables from your .env.example
+# You can also use EnvironmentFile=/path/to/.env if formatted correctly
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HTTPS_PORT=3443
+
+# Restart logic
+Restart=always
+RestartSec=10
+
+# Security: Allow binding to port 3443 as a non-root user
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target

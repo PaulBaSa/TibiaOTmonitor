@@ -16,11 +16,11 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tibiaotmonitor",
+      "bundleIdentifier": "com.tuinsomnia.tibiaotmonitor",
       "buildNumber": "1",
       "entitlements": {
         "keychain-access-groups": [
-          "$(AppIdentifierPrefix)com.tibiaotmonitor"
+          "$(AppIdentifierPrefix)com.tuinsomnia.tibiaotmonitor"
         ]
       }
     },
@@ -29,7 +29,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0D0D0D"
       },
-      "package": "com.tibiaotmonitor",
+      "package": "com.tuinsomnia.tibiaotmonitor",
       "versionCode": 1,
       "permissions": [
         "INTERNET",
